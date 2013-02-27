@@ -139,7 +139,7 @@ int main(void) {
 
 	char mcv[16] = { }, forgev[64] = { };
 
-	ina: fputs("Type MinecraftVresion less than 15 characters>", stdout);
+	ina: fputs("Type MinecraftVersion less than 15 characters>", stdout);
 	cpa = mcv;
 	i = 0;
 	fflush(stdin);
