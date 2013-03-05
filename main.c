@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <dirent.h>
 #include <sys/stat.h>
 const char buildxml1[] = "<project name=\"";
@@ -54,132 +53,85 @@ const char buildxml5[] =
 				"	<target name=\"package\" depends=\"compile\">\n"
 				"		<jar destfile=\"${jar.path}\">\n"
 				"			<fileset dir=\"${reobf.dir}\" />\n"
-				"			<fileset dir=\"${res.dir}\" />\n";
+				"			<fileset dir=\"${res.dir}\" />\n\t\t\t";
 const char buildxml6[] = "\n"
 		"		</jar>\n"
 		"		<antcall target=\"clean\" />\n"
 		"	</target>\n"
 		"\n"
 		"	<target name=\"main\" depends=\"package\" />\n"
-		"</project>\n";
+		"</project>";
 const char gitignore[] = "/dist\n/bin\n.*";
 const char modvstr[] = "mod.version\" value=\"";
 const char manifestSt[] = "<manifest";
 const char manifestEnd[] = "</manifest>";
 const char cp[] = "<classpathentry kind=\"src\" path=\"src\"/>";
-const char proj11[] = ".linkedResourceslink.name";
+const char proj11[] = ".linkedResources.link.name";
 const char proj12[] = "src";
 const char proj21[] = ".variableList.variable.name";
 const char proj22[] = "MCP_LOC";
 const char proj23[] = ".variableList.variable.value";
-char* getModv(const char* buildxml) {
-	register const char* search = modvstr;
-	do {
-		if (*buildxml == *search) {
-			while (1)
-				if (*++buildxml != *++search)
-					break;
-			if (*search == '\0')
-				break;
-			search = modvstr;
-		}
-	} while (*++buildxml);
-	register int pos = 0;
-	while (*++buildxml != '"')
-		pos++;
-	char* modv = malloc(pos + 1);
-	modv += pos;
-	*modv = '\0';
-	for (buildxml--; *buildxml != '"'; buildxml--)
-		*--modv = *buildxml;
-	return modv;
-}
-char* getManifest(const char* buildxml) {
-	register const char* search = manifestSt;
-	do {
-		if (*buildxml == *search) {
-			while (1)
-				if (*++buildxml != *++search)
-					break;
-			if (*search == '\0')
-				break;
-			search = manifestSt;
-		}
-	} while (*++buildxml);
-	if (*buildxml == '\0')
-		return "";
-	register int pos = 9;
-	search = manifestEnd;
-	do {
-		pos++;
-		if (*buildxml == *search) {
-			while (1) {
-				pos++;
-				if (*++buildxml != *++search)
-					break;
-			}
-			if (*search == '\0')
-				break;
-			search = manifestEnd;
-		}
-	} while (*++buildxml);
-	char* manifest = malloc(pos + 1);
-	manifest += pos;
-	*manifest = '\0';
-	for (buildxml--, pos--; pos > 0; pos--)
-		*--manifest = *buildxml--;
-	return manifest;
-}
 int main(void) {
 	register char *cpa, *cpa2;
 	register const char *cpb, *cpb2;
 	register int i, j;
 	register char cc;
 	FILE *fp;
+	char *modv, *manifest, *classpath, *project2;
+	struct dirent *dir;
+	struct stat s;
+	char mcv[16] = { }, forgev[64] = { }, layer[128] = { }, project1[96] = { };
+	// char[] sfn, fn
 
-	char mcv[16] = { }, forgev[64] = { };
-
+	/* get minecraft version */
 	ina: fputs("Type MinecraftVersion less than 15 characters>", stdout);
 	cpa = mcv;
 	i = 0;
 	fflush(stdin);
-	while ((cc = getc(stdin))) {
-		if (i > 0 && (cc == 0x08 || cc == 0x7f)) {
-			*--cpa = '\0';
+	while ((cc = getc(stdin)))
+	{
+		if (i > 0 && (cc == 0x08 || cc == 0x7f))
+		{
+			*--cpa = 0;
 			i--;
 			continue;
 		}
 		if (cc < 0x20 || i > 15)
-			break;
+		break;
 		*cpa++ = cc;
 		i++;
 	}
 	if (i == 0 || i > 15) {
 		for (i = 0; i < 16; i++)
-			mcv[i] = '\0';
+			mcv[i] = 0;
 		goto ina;
 	}
+	j = i;
+	/* get forge version */
 	inb: fputs("Type MinecraftForgeVersion less than 63 characters>", stdout);
 	cpa = forgev;
 	i = 0;
 	fflush(stdin);
-	while ((cc = getc(stdin))) {
-		if (i > 0 && (cc == 0x08 || cc == 0x7f)) {
-			*--cpa = '\0';
+	while ((cc = getc(stdin)))
+	{
+		if (i > 0 && (cc == 0x08 || cc == 0x7f))
+		{
+			*--cpa = 0;
 			i--;
 			continue;
 		}
 		if (cc < 0x20 || i > 63)
-			break;
+		break;
 		*cpa++ = cc;
 		i++;
 	}
 	if (i == 0 || i > 63) {
 		for (i = 0; i < 64; i++)
-			forgev[i] = '\0';
+			forgev[i] = 0;
 		goto inb;
 	}
-	char sfn[40 + strlen(mcv) + strlen(forgev)];
+	/* find forge folder and open .classpath */
+	char sfn[40 + i + j];
 	cpa = sfn;
 	*cpa++ = '.';
 	*cpa++ = 'a';
@@ -213,7 +165,7 @@ int main(void) {
 	*cpa++ = 'a';
 	*cpa++ = 'f';
 	*cpa++ = 't';
-	char* const targetp = cpa;
+	cpa2 = cpa;
 	*cpa++ = '/';
 	*cpa++ = '.';
 	*cpa++ = 'c';
@@ -225,26 +177,27 @@ int main(void) {
 	*cpa++ = 'a';
 	*cpa++ = 't';
 	*cpa++ = 'h';
-	*cpa = '\0';
-	fp = fopen(sfn, "r");
+	*cpa = 0;
+	fp = fopen(sfn, "rb");
 	if (fp == NULL ) {
 		printf("%s is not found. check version and directories.", sfn);
 		return EXIT_FAILURE;
 	}
+	/* read classpath with add entry */
 	fseek(fp, 0, SEEK_END);
-	char* const classpath = malloc(ftell(fp) + 44);
+	classpath = malloc(ftell(fp) + 44);
 	fseek(fp, 0, SEEK_SET);
 	cpb = cp;
 	cpa = classpath;
-	while ((cc = fgetc(fp)) != -1) {
+	while ((cc = fgetc(fp)) != EOF) {
 		*cpa++ = cc;
 		if (cc == *cpb) {
-			while ((cc = fgetc(fp)) != -1) {
+			while ((cc = fgetc(fp)) != EOF) {
 				*cpa++ = cc;
 				if (cc != *++cpb)
 					break;
 			}
-			if (*cpb == '\0') {
+			if (*cpb == 0) {
 				*cpa++ = '\t';
 				*cpa++ = '<';
 				*cpa++ = 'c';
@@ -293,11 +246,12 @@ int main(void) {
 			cpb = cp;
 		}
 	}
-	while ((cc = fgetc(fp)) != -1)
+	while ((cc = fgetc(fp)) != EOF)
 		*cpa++ = cc;
-	*cpa = '\0';
+	*cpa = 0;
 	fclose(fp);
-	cpa = targetp;
+	/* open .project and read that with some fix. */
+	cpa = cpa2;
 	*cpa++ = '/';
 	*cpa++ = '.';
 	*cpa++ = 'p';
@@ -307,16 +261,14 @@ int main(void) {
 	*cpa++ = 'e';
 	*cpa++ = 'c';
 	*cpa++ = 't';
-	*cpa = '\0';
-	fp = fopen(sfn, "r");
-	char project1[96] = { };
+	*cpa = 0;
+	fp = fopen(sfn, "rb");
 	fseek(fp, 0, SEEK_END);
-	char* const project2 = malloc(ftell(fp));
+	project2 = malloc(ftell(fp));
 	fseek(fp, 0, SEEK_SET);
-	char class[128] = { };
 	cpa = project1;
-	cpa2 = class;
-	while ((cc = fgetc(fp)) != -1) {
+	cpa2 = layer;
+	while ((cc = fgetc(fp)) != EOF) {
 		*cpa++ = cc;
 		if (cc == '?') {
 			cc = fgetc(fp);
@@ -325,12 +277,12 @@ int main(void) {
 				break;
 		}
 	}
-	while ((cc = fgetc(fp)) != -1) {
+	while ((cc = fgetc(fp)) != EOF) {
 		*cpa++ = cc;
 		if (cc == '>')
 			break;
 	}
-	while ((cc = fgetc(fp)) != -1) {
+	while ((cc = fgetc(fp)) != EOF) {
 		*cpa++ = cc;
 		if (cc == '<') {
 			cc = fgetc(fp);
@@ -353,24 +305,25 @@ int main(void) {
 			*cpa++ = cc;
 			if (cc != '>')
 				continue;
+			*cpa = 0;
 			cpa = project2;
 			break;
 		}
 	}
-	while ((cc = fgetc(fp)) != -1) {
+	while ((cc = fgetc(fp)) != EOF) {
 		if (cc == '<')
 			break;
 	}
 	*cpa++ = cc;
-	while ((cc = fgetc(fp)) != -1) {
+	while ((cc = fgetc(fp)) != EOF) {
 		*cpa++ = cc;
 		if (cc == '<') {
 			cc = fgetc(fp);
 			*cpa++ = cc;
 			if (cc == '/') {
-				while (*cpa2 != '.')
-					*cpa2-- = '\0';
-				*cpa2 = '\0';
+				while (*cpa2 != '.' && cpa2 > layer)
+					cpa2--;
+				*cpa2 = 0;
 			} else {
 				*cpa2++ = '.';
 				*cpa2++ = cc;
@@ -378,12 +331,13 @@ int main(void) {
 					*cpa++ = cc;
 					*cpa2++ = cc;
 				}
+				*cpa2 = 0;
 				*cpa++ = cc;
 				cpb = proj11;
-				cpb2 = class;
-				while (*cpb++ == *cpb2++ && *cpb != '\0')
+				cpb2 = layer;
+				while (*cpb++ == *cpb2++ && *cpb != 0)
 					;
-				if (*cpb == '\0') {
+				if (*cpb == 0) {
 					cc = fgetc(fp);
 					*cpa++ = cc;
 					if (cc != 's')
@@ -414,15 +368,18 @@ int main(void) {
 			}
 		}
 	}
-	while ((cc = fgetc(fp)) != -1) {
+	while (*cpa2 != '.' && cpa2 > layer)
+		cpa2--;
+	*cpa2 = 0;
+	while ((cc = fgetc(fp)) != EOF) {
 		*cpa++ = cc;
 		if (cc == '<') {
 			cc = fgetc(fp);
 			*cpa++ = cc;
 			if (cc == '/') {
-				while (*cpa2 != '.')
-					*cpa2-- = '\0';
-				*cpa2 = '\0';
+				while (*cpa2 != '.' && cpa2 > layer)
+					cpa2--;
+				*cpa2 = 0;
 			} else {
 				*cpa2++ = '.';
 				*cpa2++ = cc;
@@ -430,12 +387,13 @@ int main(void) {
 					*cpa++ = cc;
 					*cpa2++ = cc;
 				}
+				*cpa2 = 0;
 				*cpa++ = cc;
 				cpb = proj21;
-				cpb2 = class;
-				while (*cpb++ == *cpb2++ && *cpb != '\0')
+				cpb2 = layer;
+				while (*cpb++ == *cpb2++ && *cpb != 0)
 					;
-				if (*cpb == '\0') {
+				if (*cpb == 0) {
 					cc = fgetc(fp);
 					*cpa++ = cc;
 					if (cc != 'M')
@@ -473,15 +431,18 @@ int main(void) {
 			}
 		}
 	}
-	while ((cc = fgetc(fp)) != -1) {
+	while (*cpa2 != '.' && cpa2 > layer)
+		cpa2--;
+	*cpa2 = 0;
+	while ((cc = fgetc(fp)) != EOF) {
 		*cpa++ = cc;
 		if (cc == '<') {
 			cc = fgetc(fp);
 			*cpa++ = cc;
 			if (cc == '/') {
-				while (*cpa2 != '.')
-					*cpa2-- = '\0';
-				*cpa2 = '\0';
+				while (*cpa2 != '.' && cpa2 > layer)
+					cpa2--;
+				*cpa2 = 0;
 			} else {
 				*cpa2++ = '.';
 				*cpa2++ = cc;
@@ -489,12 +450,13 @@ int main(void) {
 					*cpa++ = cc;
 					*cpa2++ = cc;
 				}
+				*cpa2 = 0;
 				*cpa++ = cc;
 				cpb = proj23;
-				cpb2 = class;
-				while (*cpb++ == *cpb2++ && *cpb != '\0')
+				cpb2 = layer;
+				while (*cpb++ == *cpb2++ && *cpb != 0)
 					;
-				if (*cpb == '\0') {
+				if (*cpb == 0) {
 					*cpa++ = '$';
 					*cpa++ = '%';
 					*cpa++ = '7';
@@ -538,19 +500,19 @@ int main(void) {
 			}
 		}
 	}
-	while ((cc = fgetc(fp)) != -1)
+	while ((cc = fgetc(fp)) != EOF)
 		*cpa++ = cc;
-	*cpa = '\0';
+	*cpa = 0;
 	fclose(fp);
+	/* get projects and write files. */
 	DIR *dp = opendir("./");
-	struct dirent *dir;
-	char *modv, *manifest;
-	struct stat s;
 	while ((dir = readdir(dp))) {
 		stat(dir->d_name, &s);
 		if (!(s.st_mode & S_IFDIR) || dir->d_name[0] == '.')
 			continue;
-		j = strlen(dir->d_name);
+		/* open build.xml and read some value */
+		for (j = 0; dir->d_name[j] != 0; j++)
+			;
 		char fn[j + 12];
 		for (cpb = dir->d_name, cpa = fn; *cpb; cpb++, cpa++)
 			*cpa = *cpb;
@@ -564,25 +526,89 @@ int main(void) {
 		*cpa++ = 'x';
 		*cpa++ = 'm';
 		*cpa++ = 'l';
-		*cpa = '\0';
-		fp = fopen(fn, "r");
+		*cpa = 0;
+		fp = fopen(fn, "rb");
 		if (fp == NULL ) {
-			modv = "1.0.0";
-			manifest = "";
+			modv = malloc(6);
+			cpa = modv;
+			*cpa++ = '1';
+			*cpa++ = '.';
+			*cpa++ = '0';
+			*cpa++ = '.';
+			*cpa++ = '0';
+			*cpa++ = 0;
+			manifest = malloc(1);
+			cpa = manifest;
+			*cpa++ = 0;
 		} else {
-			fseek(fp, 0, SEEK_END);
-			char* const buildxml = malloc(ftell(fp) + 1);
-			fseek(fp, 0, SEEK_SET);
-			cpa = buildxml;
-			while ((cc = fgetc(fp)) != -1)
+			/* get Mod Version */
+			cpb = modvstr;
+			while ((cc = fgetc(fp)) != EOF) {
+				if (cc == *cpb) {
+					while (1)
+						if (fgetc(fp) != *++cpb)
+							break;
+					if (*cpb == 0)
+						break;
+					cpb = modvstr;
+				}
+			}
+			i = 0;
+			do {
+				if (cc == '"')
+					break;
+				i++;
+			} while ((cc = fgetc(fp)) != EOF);
+			modv = malloc(i + 1);
+			cpa = modv;
+			fseek(fp, -(i + 1), SEEK_CUR);
+			while ((cc = fgetc(fp)) != EOF) {
+				if (cc == '"')
+					break;
 				*cpa++ = cc;
-			*cpa = '\0';
-			modv = getModv(buildxml);
-			manifest = getManifest(buildxml);
-			fclose(fp);
-			free(buildxml);
+			}
+			*cpa = 0;
+			/* get manifest */
+			cpb = manifestSt;
+			while ((cc = fgetc(fp)) != EOF) {
+				if (cc == *cpb) {
+					while (1)
+						if (fgetc(fp) != *++cpb)
+							break;
+					if (*cpb == 0)
+						break;
+					cpb = manifestSt;
+				}
+			}
+			if (cc == EOF) {
+				manifest = malloc(1);
+				*manifest = 0;
+				goto manifestend;
+			}
+			i = 9;
+			cpb = manifestEnd;
+			while ((cc = fgetc(fp)) != EOF) {
+				i++;
+				if (cc == *cpb) {
+					while (1) {
+						i++;
+						if (fgetc(fp) != *++cpb)
+							break;
+					}
+					if (*cpb == 0)
+						break;
+					cpb = manifestEnd;
+				}
+			};
+			manifest = malloc(i + 1);
+			cpa = manifest;
+			fseek(fp, -(i + 1), SEEK_CUR);
+			for (; i > 0; i--)
+				*cpa++ = fgetc(fp);
+			*cpa = 0;
+			manifestend: fclose(fp);
 		}
-		fp = fopen(fn, "w");
+		fp = fopen(fn, "wb");
 		fputs(buildxml1, fp);
 		fputs(dir->d_name, fp);
 		fputs(buildxml2, fp);
@@ -607,8 +633,8 @@ int main(void) {
 		*cpa++ = 'o';
 		*cpa++ = 'r';
 		*cpa++ = 'e';
-		*cpa = '\0';
-		fp = fopen(fn, "w");
+		*cpa = 0;
+		fp = fopen(fn, "wb");
 		fputs(gitignore, fp);
 		fclose(fp);
 		cpa = &fn[j];
@@ -623,8 +649,8 @@ int main(void) {
 		*cpa++ = 'a';
 		*cpa++ = 't';
 		*cpa++ = 'h';
-		*cpa = '\0';
-		fp = fopen(fn, "w");
+		*cpa = 0;
+		fp = fopen(fn, "wb");
 		fputs(classpath, fp);
 		fclose(fp);
 		cpa = &fn[j];
@@ -637,14 +663,15 @@ int main(void) {
 		*cpa++ = 'e';
 		*cpa++ = 'c';
 		*cpa++ = 't';
-		*cpa = '\0';
-		fp = fopen(fn, "w");
+		*cpa = 0;
+		fp = fopen(fn, "wb");
 		fputs(project1, fp);
 		fputs(dir->d_name, fp);
 		fputs(project2, fp);
 		fclose(fp);
+		free(modv);
 	}
 	free(classpath);
 	free(project2);
-	return 0;
+	return EXIT_SUCCESS;
 }
