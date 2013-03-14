@@ -2,70 +2,8 @@
 #include <stdlib.h>
 #include <dirent.h>
 #include <sys/stat.h>
-const char buildxml1[] = "<project name=\"";
-const char buildxml2[] = "\" default=\"main\">\n"
-		"	<property name=\"mod.version\" value=\"";
-const char buildxml3[] = "\" />\n"
-		"\n"
-		"	<property name=\"mc.version\" value=\"";
-const char buildxml4[] = "\" />\n"
-		"	<property name=\"forge.version\" value=\"";
-const char buildxml5[] =
-		"\" />\n"
-				"	<property name=\"src.dir\" value=\"src\" />\n"
-				"	<property name=\"res.dir\" value=\"res\" />\n"
-				"	<property name=\"jar.dir\" value=\"dist\" />\n"
-				"	<property name=\"mcp.dir\" value=\"../.api/mcp-${mc.version}-${forge.version}\" />\n"
-				"	<property name=\"reobf.dir\" value=\"${mcp.dir}/reobf/minecraft\" />\n"
-				"	<property name=\"mcpsrc.dir\" value=\"${mcp.dir}/src/minecraft\" />\n"
-				"	<property name=\"mcpsrc.dir.concrete\" value=\"${mcpsrc.dir}/org/yogpstop\" />\n"
-				"	<property name=\"jar.path\" value=\"${jar.dir}/${mc.version}/${ant.project.name}-${mod.version}.jar\" />\n"
-				"\n"
-				"	<target name=\"clean\">\n"
-				"		<delete dir=\"${mcpsrc.dir.concrete}\" />\n"
-				"	</target>\n"
-				"\n"
-				"	<target name=\"copysource\" depends=\"clean\">\n"
-				"		<copy todir=\"${mcpsrc.dir}\">\n"
-				"			<fileset dir=\"${src.dir}\" />\n"
-				"			<filterset>\n"
-				"				<filter token=\"VERSION\" value=\"${mod.version}\" />\n"
-				"			</filterset>\n"
-				"		</copy>\n"
-				"	</target>\n"
-				"\n"
-				"	<target name=\"compile\" depends=\"copysource\">\n"
-				"\n"
-				"		<exec dir=\"${mcp.dir}\" executable=\"cmd\" osfamily=\"windows\">\n"
-				"			<arg line=\"/c recompile.bat\" />\n"
-				"		</exec>\n"
-				"		<exec dir=\"${mcp.dir}\" executable=\"sh\" osfamily=\"unix\">\n"
-				"			<arg value=\"recompile.sh\" />\n"
-				"		</exec>\n"
-				"		<exec dir=\"${mcp.dir}\" executable=\"cmd\" osfamily=\"windows\">\n"
-				"			<arg line=\"/c reobfuscate.bat\" />\n"
-				"		</exec>\n"
-				"		<exec dir=\"${mcp.dir}\" executable=\"sh\" osfamily=\"unix\">\n"
-				"			<arg value=\"reobfuscate.sh\" />\n"
-				"		</exec>\n"
-				"	</target>\n"
-				"\n"
-				"	<target name=\"package\" depends=\"compile\">\n"
-				"		<jar destfile=\"${jar.path}\">\n"
-				"			<fileset dir=\"${reobf.dir}\" />\n"
-				"			<fileset dir=\"${res.dir}\" />\n\t\t\t";
-const char buildxml6[] = "\n"
-		"		</jar>\n"
-		"		<antcall target=\"clean\" />\n"
-		"	</target>\n"
-		"\n"
-		"	<target name=\"main\" depends=\"package\" />\n"
-		"</project>";
 const char gitignore[] = "/dist\n/bin\n.*";
-const char modvstr[] = "mod.version\" value=\"";
-const char manifestSt[] = "<manifest";
-const char manifestEnd[] = "</manifest>";
-const char cp[] = "<classpathentry kind=\"src\" path=\"src\"/>";
+const char cp[] = "<classpath>";
 const char proj11[] = ".linkedResources.link.name";
 const char proj12[] = "src";
 const char proj21[] = ".variableList.variable.name";
@@ -77,10 +15,10 @@ int main(void) {
 	register int i, j;
 	register char cc;
 	FILE *fp;
-	char *modv, *manifest, *classpath, *project2;
+	char *classpath, *project2;
 	struct dirent *dir;
 	struct stat s;
-	char mcv[16] = { }, forgev[64] = { }, layer[128] = { }, project1[96] = { };
+	char mcv[16] = { }, layer[128] = { }, project1[96] = { };
 	// char[] sfn, fn
 
 	/* get minecraft version */
@@ -107,29 +45,6 @@ int main(void) {
 		goto ina;
 	}
 	j = i;
-	/* get forge version */
-	inb: fputs("Type MinecraftForgeVersion less than 63 characters>", stdout);
-	cpa = forgev;
-	i = 0;
-	fflush(stdin);
-	while ((cc = getc(stdin)))
-	{
-		if (i > 0 && (cc == 0x08 || cc == 0x7f))
-		{
-			*--cpa = 0;
-			i--;
-			continue;
-		}
-		if (cc < 0x20 || i > 63)
-		break;
-		*cpa++ = cc;
-		i++;
-	}
-	if (i == 0 || i > 63) {
-		for (i = 0; i < 64; i++)
-			forgev[i] = 0;
-		goto inb;
-	}
 	/* find forge folder and open .classpath */
 	char sfn[40 + i + j];
 	cpa = sfn;
@@ -138,14 +53,10 @@ int main(void) {
 	*cpa++ = 'p';
 	*cpa++ = 'i';
 	*cpa++ = '/';
-	*cpa++ = 'm';
-	*cpa++ = 'c';
-	*cpa++ = 'p';
-	*cpa++ = '-';
+	*cpa++ = 'M';
+	*cpa++ = 'C';
+	*cpa++ = 'P';
 	for (cpb = mcv; *cpb; cpb++, cpa++)
-		*cpa = *cpb;
-	*cpa++ = '-';
-	for (cpb = forgev; *cpb; cpb++, cpa++)
 		*cpa = *cpb;
 	*cpa++ = '/';
 	*cpa++ = 'e';
@@ -483,14 +394,10 @@ int main(void) {
 					*cpa++ = 'p';
 					*cpa++ = 'i';
 					*cpa++ = '/';
-					*cpa++ = 'm';
-					*cpa++ = 'c';
-					*cpa++ = 'p';
-					*cpa++ = '-';
+					*cpa++ = 'M';
+					*cpa++ = 'C';
+					*cpa++ = 'P';
 					for (cpb = mcv; *cpb; cpb++, cpa++)
-						*cpa = *cpb;
-					*cpa++ = '-';
-					for (cpb = forgev; *cpb; cpb++, cpa++)
 						*cpa = *cpb;
 					while ((cc = fgetc(fp)) != '<')
 						;
@@ -510,118 +417,20 @@ int main(void) {
 		stat(dir->d_name, &s);
 		if (!(s.st_mode & S_IFDIR) || dir->d_name[0] == '.')
 			continue;
-		/* open build.xml and read some value */
+		inb: fputs("query ", stdout);
+		fputs(dir->d_name, stdout);
+		fputs("?(y/n)", stdout);
+		fflush(stdin);
+		cc = getc(stdin);
+		if (cc == 'n')
+			continue;
+		if (cc != 'y')
+			goto inb;
 		for (j = 0; dir->d_name[j] != 0; j++)
 			;
 		char fn[j + 12];
 		for (cpb = dir->d_name, cpa = fn; *cpb; cpb++, cpa++)
 			*cpa = *cpb;
-		*cpa++ = '/';
-		*cpa++ = 'b';
-		*cpa++ = 'u';
-		*cpa++ = 'i';
-		*cpa++ = 'l';
-		*cpa++ = 'd';
-		*cpa++ = '.';
-		*cpa++ = 'x';
-		*cpa++ = 'm';
-		*cpa++ = 'l';
-		*cpa = 0;
-		fp = fopen(fn, "rb");
-		if (fp == NULL ) {
-			modv = malloc(6);
-			cpa = modv;
-			*cpa++ = '1';
-			*cpa++ = '.';
-			*cpa++ = '0';
-			*cpa++ = '.';
-			*cpa++ = '0';
-			*cpa++ = 0;
-			manifest = malloc(1);
-			cpa = manifest;
-			*cpa++ = 0;
-		} else {
-			/* get Mod Version */
-			cpb = modvstr;
-			while ((cc = fgetc(fp)) != EOF) {
-				if (cc == *cpb) {
-					while (1)
-						if (fgetc(fp) != *++cpb)
-							break;
-					if (*cpb == 0)
-						break;
-					cpb = modvstr;
-				}
-			}
-			i = 0;
-			do {
-				if (cc == '"')
-					break;
-				i++;
-			} while ((cc = fgetc(fp)) != EOF);
-			modv = malloc(i + 1);
-			cpa = modv;
-			fseek(fp, -(i + 1), SEEK_CUR);
-			while ((cc = fgetc(fp)) != EOF) {
-				if (cc == '"')
-					break;
-				*cpa++ = cc;
-			}
-			*cpa = 0;
-			/* get manifest */
-			cpb = manifestSt;
-			while ((cc = fgetc(fp)) != EOF) {
-				if (cc == *cpb) {
-					while (1)
-						if (fgetc(fp) != *++cpb)
-							break;
-					if (*cpb == 0)
-						break;
-					cpb = manifestSt;
-				}
-			}
-			if (cc == EOF) {
-				manifest = malloc(1);
-				*manifest = 0;
-				goto manifestend;
-			}
-			i = 9;
-			cpb = manifestEnd;
-			while ((cc = fgetc(fp)) != EOF) {
-				i++;
-				if (cc == *cpb) {
-					while (1) {
-						i++;
-						if (fgetc(fp) != *++cpb)
-							break;
-					}
-					if (*cpb == 0)
-						break;
-					cpb = manifestEnd;
-				}
-			};
-			manifest = malloc(i + 1);
-			cpa = manifest;
-			fseek(fp, -(i + 1), SEEK_CUR);
-			for (; i > 0; i--)
-				*cpa++ = fgetc(fp);
-			*cpa = 0;
-			manifestend: fclose(fp);
-		}
-		fp = fopen(fn, "wb");
-		fputs(buildxml1, fp);
-		fputs(dir->d_name, fp);
-		fputs(buildxml2, fp);
-		fputs(modv, fp);
-		fputs(buildxml3, fp);
-		fputs(mcv, fp);
-		fputs(buildxml4, fp);
-		fputs(forgev, fp);
-		fputs(buildxml5, fp);
-		fputs(manifest, fp);
-		fputs(buildxml6, fp);
-		fclose(fp);
-		cpa = &fn[j];
 		*cpa++ = '/';
 		*cpa++ = '.';
 		*cpa++ = 'g';
@@ -669,7 +478,6 @@ int main(void) {
 		fputs(dir->d_name, fp);
 		fputs(project2, fp);
 		fclose(fp);
-		free(modv);
 	}
 	free(classpath);
 	free(project2);
