@@ -16,18 +16,18 @@ for build in fll:
         if not builds.has_key(m.group(3)):
             builds[m.group(3)] = []
         builds[m.group(3)].append([m.group(1),m.group(2),m.group(4)])
-for build in builds.items():
-    print build[0]
+for mcversion,nul in sorted(builds.items()):
+    print mcversion
 while True:
-    version = raw_input('select version: ')
-    if builds.has_key(version):
+    mcversion = raw_input('select Minecraft version: ')
+    if builds.has_key(mcversion):
         break
-for build in builds[version]:
+for build in sorted(builds[mcversion],key=lambda x:x[0]):
     print build[0]," released on",build[1]
 done = False
 while True:
-    bnum = raw_input('select build: ')
-    for build in builds[version]:
+    bnum = raw_input('select Forge build: ')
+    for build in builds[mcversion]:
         if build[0]==bnum:
             urllib.urlretrieve(build[2],'forge.zip')
             done = True
@@ -41,14 +41,14 @@ for f in zf.namelist():
 zf.close()
 sys.path.append(os.path.abspath('forge'))
 import install
-mcpf = os.path.abspath(os.path.join('.api','Forge'+version))
-if os.isdir(mcpf)
+mcpf = os.path.abspath(os.path.join('.api','Forge'+mcversion))
+if os.isdir(mcpf):
     shutil.rmtree(mcpf)
 install.main(mcpf)
 os.chdir(pydir)
 shutil.rmtree('forge')
 os.remove('forge.zip')
-mcploc = "$%7BWORKSPACE-LOC%7D/.api/Forge"+version
+mcploc = "$%7BWORKSPACE-LOC%7D/.api/Forge"+mcversion
 tree = ElementTree()
 pj=os.path.join(mcpf,"eclipse","Minecraft",".project")
 tree.parse(pj)
