@@ -87,7 +87,7 @@ def install():
     os.chdir(_path_)
     shutil.rmtree('forge')
     os.remove('forge.zip')
-    mcploc = "$%7BWORKSPACE-LOC%7D/.api/Forge"+mcversion
+    mcploc = "$%7BWORKSPACE_LOC%7D/.api/Forge"+mcversion
     tree = ElementTree()
     basedir = os.path.join(mcpf,'eclipse','Minecraft')
     pj=os.path.join(basedir,".project")
