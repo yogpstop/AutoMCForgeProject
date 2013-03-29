@@ -220,6 +220,65 @@ class build:
         self.apies.append(path)
     def rep(self, bef, aft):
         self.repes[bef] = aft
+    def makeapi(self,name):
+        import time
+        ystarttime = time.time()
+        sys.path.insert(0,os.path.join(self.mcpdir,'runtime'))
+        os.chdir(self.mcpdir)
+        import commands
+        cmd = commands.Commands()
+        srcdir = os.path.join(self.mcpdir,'src','minecraft')+os.sep
+        bindir = os.path.join(self.mcpdir,'bin','minecraft')+os.sep
+        apidir = os.path.join(self.mcpdir,'lib')
+        cmd.logger.info('> Cleaning bin')
+        for path,dnames,fnames in os.walk(srcdir,topdown=False):
+            for dname in dnames:
+                os.rmdir(os.path.join(path,dname))
+            for fname in fnames:
+                os.remove(os.path.join(path,fname))
+        dummyjava = open(os.path.join(srcdir,'dummy.java'),'wb')
+        dummyjava.write('public class dummy{}')
+        dummyjava.close()
+        cmd.cleanbindirs(commands.CLIENT)
+        for base, list in self.srces:
+            for src in list[:]:
+                tofile = os.path.join(srcdir,src)
+                fromfile = os.path.join(base,src)
+                todir = os.path.dirname(tofile)
+                if not os.path.isdir(todir):
+                    os.makedirs(todir)
+                if os.path.exists(tofile):
+                    list.remove(src)
+                elif os.path.isdir(fromfile):
+                    os.mkdir(tofile)
+                elif isbinary(fromfile):
+                    shutil.copy2(fromfile,tofile)
+                else:
+                    inputfile = open(fromfile,'rb')
+                    filedata = inputfile.read()
+                    inputfile.close()
+                    for repfrom,repto in self.repes.items():
+                        filedata = filedata.replace(repfrom,repto)
+                    outputfile = open(tofile,'wb')
+                    outputfile.write(filedata)
+                    outputfile.close()
+        cmd.logger.info('> Recompiling')
+        cmd.recompile(commands.CLIENT)
+        cmd.logger.info('> Creating Libraries')
+        zip = zipfile.ZipFile(os.path.join(apidir,name+".jar"),"w",zipfile.ZIP_DEFLATED)
+        for dpath,dnames,fnames in os.walk(bindir):
+            for fname in fnames:
+                p = os.path.join(dpath,fname)
+                if not os.path.abspath(p)==os.path.abspath(os.path.join(bindir,'dummy.class')):
+                    zip.write(p,p.replace(bindir,""))
+        zip.close()
+        zip = zipfile.ZipFile(os.path.join(apidir,name+"-src.jar"),"w",zipfile.ZIP_DEFLATED)
+        for dpath,dnames,fnames in os.walk(srcdir):
+            for fname in fnames:
+                p = os.path.join(dpath,fname)
+                if not os.path.abspath(p)==os.path.abspath(os.path.join(srcdir,'dummy.java')):
+                    zip.write(p,p.replace(srcdir,""))
+        zip.close()
     def process(self):
         import time
         ystarttime = time.time()
@@ -228,24 +287,21 @@ class build:
         import mcp,commands
         cmd = commands.Commands()
         srcdir = os.path.join(self.mcpdir,'src','minecraft')
+        bindir = os.path.join(self.mcpdir,'bin','minecraft')
+        reobfdir = os.path.join(self.mcpdir,'reobf','minecraft')+os.sep
         apidir = os.path.join(self.mcpdir,'lib')
         cmd.logger.info('> Cleaning bin')
+        for path,dnames,fnames in os.walk(srcdir,topdown=False):
+            for dname in dnames:
+                os.rmdir(os.path.join(path,dname))
+            for fname in fnames:
+                os.remove(os.path.join(path,fname))
+        dummyjava = open(os.path.join(srcdir,'dummy.java'),'wb')
+        dummyjava.write('public class dummy{}')
+        dummyjava.close()
         cmd.cleanbindirs(commands.CLIENT)
-        if len(self.apies) > 0:
-            cmd.logger.info('> Copy apis')
-            for api in self.apies:
-                zf = zipfile.ZipFile(os.path.join(apidir,api),'r')
-                for f in zf.namelist():
-                    cache = os.path.join(srcdir,f)
-                    if not os.path.exists(cache):
-                        if f.endswith('/'):
-                            os.mkdir(cache)
-                        else:
-                            zf.extract(f,srcdir)
-                zf.close()
         cmd.logger.info('> Recompiling')
         cmd.recompile(commands.CLIENT)
-        bindir = os.path.join(self.mcpdir,'bin','minecraft')
         deobfjar = zipfile.ZipFile(os.path.join(apidir,'deobfMC.jar'),'r')
         for f in deobfjar.namelist():
             cache = os.path.join(bindir,f)
@@ -255,6 +311,18 @@ class build:
                 else:
                     deobfjar.extract(f,bindir)
         deobfjar.close()
+        if len(self.apies) > 0:
+            cmd.logger.info('> Copy apis')
+            for api in self.apies:
+                zf = zipfile.ZipFile(os.path.join(apidir,api+'.jar'),'r')
+                for f in zf.namelist():
+                    cache = os.path.join(bindir,f)
+                    if not os.path.exists(cache):
+                        if f.endswith('/'):
+                            os.mkdir(cache)
+                        else:
+                            zf.extract(f,bindir)
+                zf.close()
         cmd.logger.info('> Generating md5s')
         cmd.gathermd5s(commands.CLIENT)
         for base, list in self.srces:
@@ -291,11 +359,7 @@ class build:
                 os.remove(os.path.join(path,fname))
         cmd.logger.info('> Creating output ZipFile')
         output = zipfile.ZipFile(self.zip,'w',zipfile.ZIP_DEFLATED)
-        reobfdir = os.path.join(self.mcpdir,'reobf','minecraft')+os.sep
         for base,dnames,fnames in os.walk(reobfdir):
-            for dname in dnames:
-                cache = os.path.join(base,dname)
-                output.write(cache,cache.replace(reobfdir,''))
             for fname in fnames:
                 cache = os.path.join(base,fname)
                 output.write(cache,cache.replace(reobfdir,''))
@@ -303,7 +367,7 @@ class build:
             for res in list:
                 cache = os.path.join(base,res)
                 if os.path.isdir(cache):
-                    output.write(cache,res)
+                    pass
                 elif isbinary(cache):
                     output.write(cache,res)
                 else:
