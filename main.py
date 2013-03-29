@@ -180,11 +180,6 @@ def i_all(version=None):
                 break;
             if ret[0] == 'n' or ret[0] == 'N':
                 break;
-def reset_logger():
-    import logging
-    log = logging.getLogger()
-    while len(log.handlers) > 0:
-        log.removeHandler(log.handlers[0])
 class build:
     def __init__(self, mversion, fversion=get_newest(), out=None):
         if out == None:
@@ -227,25 +222,28 @@ class build:
         self.repes[bef] = aft
     def process(self):
         import time
+        ystarttime = time.time()
         sys.path.insert(0,os.path.join(self.mcpdir,'runtime'))
         os.chdir(self.mcpdir)
-        import reobfuscate,commands
+        import mcp,commands
         cmd = commands.Commands()
         srcdir = os.path.join(self.mcpdir,'src','minecraft')
         apidir = os.path.join(self.mcpdir,'lib')
+        cmd.logger.info('> Cleaning bin')
         cmd.cleanbindirs(commands.CLIENT)
         if len(self.apies) > 0:
+            cmd.logger.info('> Copy apis')
             for api in self.apies:
                 zf = zipfile.ZipFile(os.path.join(apidir,api),'r')
                 for f in zf.namelist():
                     cache = os.path.join(srcdir,f)
                     if not os.path.exists(cache):
-                        deles.append(cache)##
                         if f.endswith('/'):
                             os.mkdir(cache)
                         else:
                             zf.extract(f,srcdir)
                 zf.close()
+        cmd.logger.info('> Recompiling')
         cmd.recompile(commands.CLIENT)
         bindir = os.path.join(self.mcpdir,'bin','minecraft')
         deobfjar = zipfile.ZipFile(os.path.join(apidir,'deobfMC.jar'),'r')
@@ -257,6 +255,7 @@ class build:
                 else:
                     deobfjar.extract(f,bindir)
         deobfjar.close()
+        cmd.logger.info('> Generating md5s')
         cmd.gathermd5s(commands.CLIENT)
         for base, list in self.srces:
             for src in list[:]:
@@ -280,16 +279,17 @@ class build:
                     outputfile = open(tofile,'wb')
                     outputfile.write(filedata)
                     outputfile.close()
+        cmd.logger.info('> Recompiling')
         cmd.recompile(commands.CLIENT)
-        reset_logger()
-        reobfuscate.main()
+        cmd.logger.info('> Creating Retroguard config files')
+        cmd.creatergcfg(reobf=True)
+        mcp.reobfuscate_side(cmd,commands.CLIENT)
         for path,dnames,fnames in os.walk(srcdir,topdown=False):
             for dname in dnames:
                 os.rmdir(os.path.join(path,dname))
             for fname in fnames:
-                nfname = os.path.join(path,fname)
-                if not os.path.abspath(nfname)==os.path.abspath(os.path.join(srcdir,'dummy.java')):
-                    os.remove(nfname)
+                os.remove(os.path.join(path,fname))
+        cmd.logger.info('> Creating output ZipFile')
         output = zipfile.ZipFile(self.zip,'w',zipfile.ZIP_DEFLATED)
         reobfdir = os.path.join(self.mcpdir,'reobf','minecraft')+os.sep
         for base,dnames,fnames in os.walk(reobfdir):
@@ -319,5 +319,9 @@ class build:
                     zinfo.flag_bits = 0x00
                     output.writestr(zinfo,filedata)
         output.close()
+        dummyjava = open(os.path.join(srcdir,'dummy.java'),'wb')
+        dummyjava.write('public class dummy{}')
+        dummyjava.close()
+        cmd.logger.info('- All Done in %.2f seconds', time.time() - ystarttime)
 if __name__ == '__main__':
     i_all(install())
