@@ -46,6 +46,7 @@ def cmp_version(a,b):
 def install():
     import urllib
     import re
+    import ConfigParser
     from xml.etree.ElementTree import ElementTree, Element
     fl = urllib.urlopen('http://files.minecraftforge.net/').read().decode().replace('&nbsp;',' ').replace('\n',' ')
     fll = re.split('Build ',fl)
@@ -112,19 +113,34 @@ def install():
     tree.getroot().insert(0,Element("classpathentry",{"kind":"lib","path":"lib/deobfMC.jar","sourcepath":"lib/deobfMC-src.jar"}))
     tree.write(cp)
     zip = zipfile.ZipFile(os.path.join(mcpf,"lib","deobfMC.jar"),"w",zipfile.ZIP_DEFLATED)
-    dir = os.path.join(mcpf,"bin","minecraft")+os.sep
-    for dpath,dnames,fnames in os.walk(dir):
+    bindir = os.path.join(mcpf,"bin","minecraft")+os.sep
+    for dpath,dnames,fnames in os.walk(bindir):
         for fname in fnames:
             p = os.path.join(dpath,fname)
-            zip.write(p,p.replace(dir,""))
+            zip.write(p,p.replace(bindir,""))
     zip.close()
     zip = zipfile.ZipFile(os.path.join(mcpf,"lib","deobfMC-src.jar"),"w",zipfile.ZIP_DEFLATED)
-    dir = os.path.join(mcpf,"src","minecraft")+os.sep
-    for dpath,dnames,fnames in os.walk(dir):
+    srcdir = os.path.join(mcpf,"src","minecraft")+os.sep
+    for dpath,dnames,fnames in os.walk(srcdir):
         for fname in fnames:
             p = os.path.join(dpath,fname)
-            zip.write(p,p.replace(dir,""))
+            zip.write(p,p.replace(srcdir,""))
     zip.close()
+    for path,dnames,fnames in os.walk(srcdir,topdown=False):
+        for dname in dnames:
+            os.rmdir(os.path.join(path,dname))
+        for fname in fnames:
+            os.remove(os.path.join(path,fname))
+    config = ConfigParser.SafeConfigParser()
+    conffile = os.path.join(mcpf,'conf','mcp.cfg')
+    config.read(conffile)
+    config.set('OUTPUT','TestClient','dummy')
+    confobj = open(conffile,'wb')
+    config.write(confobj)
+    confobj.close()
+    dummyjava = open(os.path.join(srcdir,'dummy.java'),'wb')
+    dummyjava.write('public class dummy{}')
+    dummyjava.close()
     return mcversion
 def get_newest():
     versions = []
@@ -164,6 +180,11 @@ def i_all(version=None):
                 break;
             if ret[0] == 'n' or ret[0] == 'N':
                 break;
+def reset_logger():
+    import logging
+    log = logging.getLogger()
+    while len(log.handlers) > 0:
+        log.removeHandler(log.handlers[0])
 class build:
     def __init__(self, mversion, fversion=get_newest(), out=None):
         if out == None:
@@ -201,42 +222,49 @@ class build:
         tap = (ndir,cache)
         self.reses.append(tap)
     def api(self, path):
-        self.apies.append(os.path.join(_path_,'.api',path))
+        self.apies.append(path)
     def rep(self, bef, aft):
         self.repes[bef] = aft
     def process(self):
         import time
-        deles = []
         sys.path.insert(0,os.path.join(self.mcpdir,'runtime'))
         os.chdir(self.mcpdir)
-        import recompile, reobfuscate, updatemd5
+        import reobfuscate,commands
+        cmd = commands.Commands()
         srcdir = os.path.join(self.mcpdir,'src','minecraft')
-        for api in self.apies:
-            zf = zipfile.ZipFile(api,'r')
-            for f in zf.namelist():
-                cache = os.path.join(srcdir,f)
-                if not os.path.exists(cache):
-                    deles.append(cache)
-                    if f.endwith('/'):
-                        os.mkdir(cache)
-                    else:
-                        zf.extract(f,srcdir)
-            zf.close()
-        sys.argv.append('--force')
-        updatemd5.main()
-        sys.argv.remove('--force')
+        apidir = os.path.join(self.mcpdir,'lib')
+        cmd.cleanbindirs(commands.CLIENT)
+        if len(self.apies) > 0:
+            for api in self.apies:
+                zf = zipfile.ZipFile(os.path.join(apidir,api),'r')
+                for f in zf.namelist():
+                    cache = os.path.join(srcdir,f)
+                    if not os.path.exists(cache):
+                        deles.append(cache)##
+                        if f.endswith('/'):
+                            os.mkdir(cache)
+                        else:
+                            zf.extract(f,srcdir)
+                zf.close()
+        cmd.recompile(commands.CLIENT)
+        bindir = os.path.join(self.mcpdir,'bin','minecraft')
+        deobfjar = zipfile.ZipFile(os.path.join(apidir,'deobfMC.jar'),'r')
+        for f in deobfjar.namelist():
+            cache = os.path.join(bindir,f)
+            if not os.path.exists(cache):
+                if f.endswith('/'):
+                    os.mkdir(cache)
+                else:
+                    deobfjar.extract(f,bindir)
+        deobfjar.close()
+        cmd.gathermd5s(commands.CLIENT)
         for base, list in self.srces:
             for src in list[:]:
                 tofile = os.path.join(srcdir,src)
                 fromfile = os.path.join(base,src)
                 todir = os.path.dirname(tofile)
                 if not os.path.isdir(todir):
-                    cache = todir
-                    while True:
-                        if os.path.isdir(os.path.dirname(cache)):
-                            break
-                        cache = os.path.dirname(cache)
-                    deles.append(cache)
+                    os.makedirs(todir)
                 if os.path.exists(tofile):
                     list.remove(src)
                 elif os.path.isdir(fromfile):
@@ -252,23 +280,16 @@ class build:
                     outputfile = open(tofile,'wb')
                     outputfile.write(filedata)
                     outputfile.close()
-        try:
-            recompile.main()
-        except SystemExit:
-            pass
+        cmd.recompile(commands.CLIENT)
+        reset_logger()
         reobfuscate.main()
-        for base,list in self.srces:
-            for src in list:
-                cache = os.path.join(srcdir,src)
-                if os.path.isdir(cache):
-                    shutil.rmtree(cache)
-                elif os.path.isfile(cache):
-                    os.remove(cache)
-        for delf in deles:
-            if os.path.isdir(delf):
-                shutil.rmtree(delf)
-            elif os.path.isfile(delf):
-                os.remove(delf)
+        for path,dnames,fnames in os.walk(srcdir,topdown=False):
+            for dname in dnames:
+                os.rmdir(os.path.join(path,dname))
+            for fname in fnames:
+                nfname = os.path.join(path,fname)
+                if not os.path.abspath(nfname)==os.path.abspath(os.path.join(srcdir,'dummy.java')):
+                    os.remove(nfname)
         output = zipfile.ZipFile(self.zip,'w',zipfile.ZIP_DEFLATED)
         reobfdir = os.path.join(self.mcpdir,'reobf','minecraft')+os.sep
         for base,dnames,fnames in os.walk(reobfdir):
