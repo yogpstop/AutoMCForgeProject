@@ -38,23 +38,23 @@ def cmp_version(a,b):
             return resu
         i+=1
 def select_one():
-    dirs=()
+    dirs=[]
     for dir in os.listdir(_path_):
         if dir.startswith('.'):
             continue
         if not os.path.isdir(os.path.join(_path_,dir)):
             continue
-        if not os.path.isfile(os.path.join(_path_,dir,'build.cfg'))
+        if not os.path.isfile(os.path.join(_path_,dir,'build.cfg')):
             continue
         dirs.append(dir)
     i = 0
-    while(i<len(dirs))
-        print i+' '+dirs[i]
-        i++
+    while(i<len(dirs)):
+        print str(i)+' '+dirs[i]
+        i+=1
     while True:
         num = raw_input('select target project: ')
         if num.isdigit():
-            if int(num)<len(dirs)
+            if int(num)<len(dirs):
                 return dirs[int(num)]
 def install():
     import urllib
@@ -228,7 +228,7 @@ def i_select(version=None,all=False):
             continue
         if not os.path.isdir(os.path.join(_path_,dir)):
             continue
-        if not os.path.isfile(os.path.join(_path_,dir,'build.cfg'))
+        if not os.path.isfile(os.path.join(_path_,dir,'build.cfg')):
             continue
         if all:
             i_eclipse(dir,version)
