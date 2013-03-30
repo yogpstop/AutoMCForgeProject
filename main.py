@@ -16,10 +16,6 @@ def isbinary(file):
     f.close()
     return False
 def cmp_version(a,b):
-    if a == None:
-        return 1
-    if b == None:
-        return -1
     import re
     cr = re.compile('[^0-9]')
     sa = cr.split(a)
@@ -156,34 +152,39 @@ def get_newest():
     return versions[0]
 def i_eclipse(dir,version=None):
     from xml.etree.ElementTree import ElementTree,Element
+    todir = os.path.join(_path_,dir)
+    cf = os.path.join(todir,'build.cfg')
+    if not os.path.isfile(cf):
+        print dir+" doesn't have build.cfg. Create it!"
+        return
     print '> Copying eclipse project files to '+dir
     if version == None:
         version = get_newest()
+    config = ConfigParser.SafeConfigParser()
+    config.read(cf)
+    config.set('pj','mcv',version)
+    cff = open(cf,'w')
+    config.write(cff)
+    cff.close()
     fromdir = os.path.join(_path_,'.api','Forge'+version,"eclipse","Minecraft")
-    todir = os.path.join(_path_,dir)
     tree = ElementTree()
     tree.parse(os.path.join(fromdir,'.classpath'))
-    cf = os.path.join(todir,'build.cfg')
-    if os.path.isfile(cf):
-        config = ConfigParser.SafeConfigParser()
-        config.read(cf)
-        if config.has_option('pj','src'):
-            for src in config.get('pj','src').split(':'):
-                if src.endswith('/'):
-                    tree.getroot().append(Element("classpathentry",{"kind":"src","path":src[:-1]}))
-                else:
-                    src = src.split('/')
-                    if len(src)==1:
-                        src = src[0]
-                    else:
-                        src = '/'.join(src[:-1])
-                    if src=='':
-                        src='.'
-                    tree.getroot().append(Element("classpathentry",{"kind":"src","path":src}))
-        if config.has_option('pj','api'):
-            for api in config.get('pj','api').split(':'):
-                tree.getroot().append(Element('classpathentry',
-                    {'kind':'lib','path':'lib/'+api+'.jar','sourcepath':'lib/'+api+'-src.jar'}))
+    for src in config.get('pj','src').split(':'):
+        if src.endswith('/'):
+            tree.getroot().append(Element("classpathentry",{"kind":"src","path":src[:-1]}))
+        else:
+            src = src.split('/')
+            if len(src)==1:
+                src = src[0]
+            else:
+                src = '/'.join(src[:-1])
+            if src=='':
+                src='.'
+            tree.getroot().append(Element("classpathentry",{"kind":"src","path":src}))
+    if config.has_option('pj','api'):
+        for api in config.get('pj','api').split(':'):
+            tree.getroot().append(Element('classpathentry',
+                {'kind':'lib','path':'lib/'+api+'.jar','sourcepath':'lib/'+api+'-src.jar'}))
     tree.write(os.path.join(todir,'.classpath'))
     inputfile = open(os.path.join(fromdir,'.project'),'rb')
     filedata = inputfile.read()
@@ -192,7 +193,7 @@ def i_eclipse(dir,version=None):
     outputfile = open(os.path.join(todir,'.project'),'wb')
     outputfile.write(filedata)
     outputfile.close()
-def i_all(version=None):
+def i_select(version=None,all=False):
     if version == None:
         version = get_newest()
     for dir in os.listdir(_path_):
@@ -200,211 +201,186 @@ def i_all(version=None):
             continue
         if not os.path.isdir(os.path.join(_path_,dir)):
             continue
-        while True:
-            ret = raw_input(dir+' is MinecraftForge project[y/n]?')
-            if ret[0] == 'y' or ret[0] == 'Y':
-                i_eclipse(dir,version)
-                break;
-            if ret[0] == 'n' or ret[0] == 'N':
-                break;
-def reset_logger():
-    while len(logger.handlers) > 0:
-        logger.removeHandler(logger.handlers[0])
+        if not os.path.isfile(os.path.join(_path_,dir,'build.cfg'))
+            continue
+        if all:
+            i_eclipse(dir,version)
+        else:
+            while True:
+                ret = raw_input(dir+' is MinecraftForge project[y/n]?')
+                if ret[0] == 'y' or ret[0] == 'Y':
+                    i_eclipse(dir,version)
+                    break;
+                if ret[0] == 'n' or ret[0] == 'N':
+                    break;
 def build(pname):
     starttime = time.time()
     pdir = os.path.join(_path_,pname)
     cf = os.path.join(pdir,'build.cfg')
-    if os.path.isfile(cf):
-        config = ConfigParser.SafeConfigParser()
-        config.read(cf)
-        mversion = config.get('pj','version')
-        if config.has_option('pj','mcv'):
-            fversion = config.get('pj','mcv')
-        else:
-            fversion = get_newest()
-        if config.has_option('pj','out'):
-            out = config.get('pj','out').replace('/',os.sep)
-        else:
-            out = os.path.join('dist',fversion,pname+'-'+mversion+'.zip')
-        exfile = os.path.join(pdir,out)
-        exdir = os.path.dirname(exfile)
-        if not os.path.isdir(exdir):
-            os.makedirs(exdir)
-        mcpdir = os.path.join(_path_,'.api','Forge'+fversion)
-        srces = []
-        reses = []
-        apies = []
-        repes = {}
-        repes['@VERSION@']=fversion
-        srcdir = os.path.join(mcpdir,'src','minecraft')+os.sep
-        bindir = os.path.join(mcpdir,'bin','minecraft')+os.sep
-        reobfdir = os.path.join(mcpdir,'reobf','minecraft')+os.sep
-        apidir = os.path.join(mcpdir,'lib')
-        if config.has_option('pj','src'):
-            for dir in config.get('pj','src').replace('/',os.sep).split(':'):
-                ndir = os.path.abspath(os.path.join(pdir,os.path.dirname(dir)))+os.sep
-                dir = os.path.abspath(os.path.join(pdir,dir))
-                cache = []
-                for fpath, dnames, fnames in os.walk(dir):
-                    for fname in fnames:
-                        cache.append(os.path.join(fpath,fname).replace(ndir,''))
-                tap = (ndir,cache)
-                srces.append(tap)
-        if config.has_option('pj','res'):
-            for dir in config.get('pj','res').replace('/',os.sep).split(':'):
-                ndir = os.path.abspath(os.path.join(pdir,os.path.dirname(dir)))+os.sep
-                dir = os.path.abspath(os.path.join(pdir,dir))
-                cache = []
-                for fpath, dnames, fnames in os.walk(dir):
-                    for fname in fnames:
-                        cache.append(os.path.join(fpath,fname).replace(ndir,''))
-                tap = (ndir,cache)
-                reses.append(tap)
-        if config.has_option('pj','api'):
-            for name in config.get('pj','api').replace('/',os.sep).split(':'):
-                apies.append(name)
-        if config.has_option('pj','rep'):
-            for rep in confi.get('pj','rep').split('|'):
-                bef,aft=rep.split('=')
-                repes[bef] = aft
-        if config.has_option('pj','capif'):
-            name = config.get('pj','capif')
-            sys.path.insert(0,os.path.join(mcpdir,'runtime'))
-            os.chdir(mcpdir)
-            import commands
-            cmd = commands.Commands()
-            cmd.logger.info('> Cleaning directories')###############################################################################
-            for path,dnames,fnames in os.walk(srcdir,topdown=False):
-                for fname in fnames:
-                    os.remove(os.path.join(path,fname))
-            dummyjava = open(os.path.join(srcdir,'dummy.java'),'wb')
-            dummyjava.write('public class dummy{}')
-            dummyjava.close()
-            cmd.cleanbindirs(commands.CLIENT)
-            cmd.logger.info('> Copying Mod sources')################################################################################
-            for base, list in srces:
-                for src in list[:]:
-                    tofile = os.path.join(srcdir,src)
-                    fromfile = os.path.join(base,src)
-                    todir = os.path.dirname(tofile)
-                    if not os.path.isdir(todir):
-                        os.makedirs(todir)
-                    if isbinary(fromfile):
-                        shutil.copy2(fromfile,tofile)
-                    else:
-                        inputfile = open(fromfile,'rb')
-                        filedata = inputfile.read()
-                        inputfile.close()
-                        for repfrom,repto in repes.items():
-                            filedata = filedata.replace(repfrom,repto)
-                        outputfile = open(tofile,'wb')
-                        outputfile.write(filedata)
-                        outputfile.close()
-            cmd.logger.info('> Recompiling')########################################################################################
-            cmd.recompile(commands.CLIENT)
-            cmd.logger.info('> Creating libraries')#################################################################################
-            lzip = zipfile.ZipFile(os.path.join(apidir,name+".jar"),"w",zipfile.ZIP_DEFLATED)
-            for dpath,dnames,fnames in os.walk(bindir):
-                for fname in fnames:
-                    p = os.path.join(dpath,fname)
-                    if not p==os.path.abspath(os.path.join(bindir,'dummy.class')):
-                        lzip.write(p,p.replace(bindir,""))
-            lzip.close()
-            lzip = zipfile.ZipFile(os.path.join(apidir,name+"-src.jar"),"w",zipfile.ZIP_DEFLATED)
-            for dpath,dnames,fnames in os.walk(srcdir):
-                for fname in fnames:
-                    p = os.path.join(dpath,fname)
-                    if not p==os.path.abspath(os.path.join(srcdir,'dummy.java')):
-                        lzip.write(p,p.replace(srcdir,""))
-            lzip.close()
-            reset_logger()
-        sys.path.insert(0,os.path.join(mcpdir,'runtime'))
-        os.chdir(mcpdir)
-        import mcp,commands
-        cmd = commands.Commands()
-        cmd.logger.info('> Cleaning directories')###############################################################################
-        for path,dnames,fnames in os.walk(srcdir,topdown=False):
+    if not os.path.isfile(cf):
+        print dir+" doesn't have build.cfg. Create it!"
+        return
+    config = ConfigParser.SafeConfigParser()
+    config.read(cf)
+    mversion = config.get('pj','version')
+    if config.has_option('pj','mcv'):
+        fversion = config.get('pj','mcv')
+    else:
+        fversion = get_newest()
+    if config.has_option('pj','out'):
+        out = config.get('pj','out').replace('/',os.sep)
+    else:
+        out = os.path.join('dist',fversion,pname+'-'+mversion+'.zip')
+    exfile = os.path.join(pdir,out)
+    exdir = os.path.dirname(exfile)
+    if not os.path.isdir(exdir):
+        os.makedirs(exdir)
+    mcpdir = os.path.join(_path_,'.api','Forge'+fversion)
+    srces = []
+    reses = []
+    apies = []
+    repes = {}
+    repes['@VERSION@']=fversion
+    srcdir = os.path.join(mcpdir,'src','minecraft')+os.sep
+    bindir = os.path.join(mcpdir,'bin','minecraft')+os.sep
+    reobfdir = os.path.join(mcpdir,'reobf','minecraft')+os.sep
+    apidir = os.path.join(mcpdir,'lib')
+    sys.path.insert(0,os.path.join(mcpdir,'runtime'))
+    os.chdir(mcpdir)
+    import commands,mcp
+    cmd = commands.Commands()
+    for dir in config.get('pj','src').replace('/',os.sep).split(':'):
+        ndir = os.path.abspath(os.path.join(pdir,os.path.dirname(dir)))+os.sep
+        dir = os.path.abspath(os.path.join(pdir,dir))
+        cache = []
+        for fpath, dnames, fnames in os.walk(dir):
             for fname in fnames:
-                os.remove(os.path.join(path,fname))
-        dummyjava = open(os.path.join(srcdir,'dummy.java'),'wb')
-        dummyjava.write('public class dummy{}')
-        dummyjava.close()
+                cache.append(os.path.join(fpath,fname).replace(ndir,''))
+        tap = (ndir,cache)
+        srces.append(tap)
+    if config.has_option('pj','res'):
+        for dir in config.get('pj','res').replace('/',os.sep).split(':'):
+            ndir = os.path.abspath(os.path.join(pdir,os.path.dirname(dir)))+os.sep
+            dir = os.path.abspath(os.path.join(pdir,dir))
+            cache = []
+            for fpath, dnames, fnames in os.walk(dir):
+                for fname in fnames:
+                    cache.append(os.path.join(fpath,fname).replace(ndir,''))
+            tap = (ndir,cache)
+            reses.append(tap)
+    if config.has_option('pj','api'):
+        for name in config.get('pj','api').replace('/',os.sep).split(':'):
+            apies.append(name)
+    if config.has_option('pj','rep'):
+        for rep in config.get('pj','rep').split('|'):
+            bef,aft=rep.split('=')
+            repes[bef] = aft
+    cmd.logger.info('> Cleaning directories')###############################################################################
+    for path,dnames,fnames in os.walk(srcdir):
+        for fname in fnames:
+            os.remove(os.path.join(path,fname))
+    dummyjava = open(os.path.join(srcdir,'dummy.java'),'wb')
+    dummyjava.write('public class dummy{}')
+    dummyjava.close()
+    cmd.cleanbindirs(commands.CLIENT)
+    cmd.logger.info('> Recompiling')########################################################################################
+    cmd.recompile(commands.CLIENT)
+    cmd.logger.info('> Extracting forge binaries')##########################################################################
+    deobfjar = zipfile.ZipFile(os.path.join(apidir,'deobfMC.jar'),'r')
+    for f in deobfjar.namelist():
+        cache = os.path.join(bindir,f)
+        if not os.path.exists(cache):
+            if f.endswith('/'):
+                os.mkdir(cache)
+            else:
+                deobfjar.extract(f,bindir)
+    deobfjar.close()
+    if len(apies) > 0:#################################################################################################
+        cmd.logger.info('> Extracting api binaries')
+        for api in apies:
+            zf = zipfile.ZipFile(os.path.join(apidir,api+'.jar'),'r')
+            for f in zf.namelist():
+                cache = os.path.join(bindir,f)
+                if not os.path.exists(cache):
+                    if f.endswith('/'):
+                        os.mkdir(cache)
+                    else:
+                        zf.extract(f,bindir)
+            zf.close()
+    cmd.logger.info('> Generating md5s')####################################################################################
+    cmd.gathermd5s(commands.CLIENT)
+    cmd.logger.info('> Copying Mod sources')################################################################################
+    for base, list in srces:
+        for src in list[:]:
+            tofile = os.path.join(srcdir,src)
+            fromfile = os.path.join(base,src)
+            todir = os.path.dirname(tofile)
+            if not os.path.isdir(todir):
+                os.makedirs(todir)
+            if isbinary(fromfile):
+                shutil.copy2(fromfile,tofile)
+            else:
+                inputfile = open(fromfile,'rb')
+                filedata = inputfile.read()
+                inputfile.close()
+                for repfrom,repto in repes.items():
+                    filedata = filedata.replace(repfrom,repto)
+                outputfile = open(tofile,'wb')
+                outputfile.write(filedata)
+                outputfile.close()
+    cmd.logger.info('> Recompiling')########################################################################################
+    cmd.recompile(commands.CLIENT)
+    cmd.logger.info('> Creating Retroguard config files')###################################################################
+    cmd.creatergcfg(reobf=True)
+    cmd.logger.info('> Reobfuscating')######################################################################################
+    mcp.reobfuscate_side(cmd,commands.CLIENT)
+    cmd.logger.info('> Creating output ZipFile')############################################################################
+    output = zipfile.ZipFile(exfile,'w',zipfile.ZIP_DEFLATED)
+    for base,dnames,fnames in os.walk(reobfdir):
+        for fname in fnames:
+            cache = os.path.join(base,fname)
+            output.write(cache,cache.replace(reobfdir,''))
+    for base,list in reses:
+        for res in list:
+            cache = os.path.join(base,res)
+            if isbinary(cache):
+                output.write(cache,res)
+            else:
+                inputfile = open(cache,'rb')
+                filedata = inputfile.read()
+                inputfile.close()
+                for repfrom,repto in repes.items():
+                    filedata = filedata.replace(repfrom,repto)
+                st = os.stat(cache)
+                zinfo = zipfile.ZipInfo(res, time.localtime(st.st_mtime)[0:6])
+                zinfo.external_attr = (st[0] & 0xFFFF) << 16L
+                zinfo.compress_type = output.compression
+                zinfo.flag_bits = 0x00
+                output.writestr(zinfo,filedata)
+    output.close()
+    if config.has_option('pj','capif'):
+        name = config.get('pj','capif')
+        cmd.logger.info('> Cleaning bin directory')###############################################################################
         cmd.cleanbindirs(commands.CLIENT)
         cmd.logger.info('> Recompiling')########################################################################################
         cmd.recompile(commands.CLIENT)
-        cmd.logger.info('> Extracting forge binaries')##########################################################################
-        deobfjar = zipfile.ZipFile(os.path.join(apidir,'deobfMC.jar'),'r')
-        for f in deobfjar.namelist():
-            cache = os.path.join(bindir,f)
-            if not os.path.exists(cache):
-                if f.endswith('/'):
-                    os.mkdir(cache)
-                else:
-                    deobfjar.extract(f,bindir)
-        deobfjar.close()
-
-        if len(apies) > 0:#################################################################################################
-            cmd.logger.info('> Extracting api binaries')
-            for api in apies:
-                zf = zipfile.ZipFile(os.path.join(apidir,api+'.jar'),'r')
-                for f in zf.namelist():
-                    cache = os.path.join(bindir,f)
-                    if not os.path.exists(cache):
-                        if f.endswith('/'):
-                            os.mkdir(cache)
-                        else:
-                            zf.extract(f,bindir)
-                zf.close()
-        cmd.logger.info('> Generating md5s')####################################################################################
-        cmd.gathermd5s(commands.CLIENT)
-        cmd.logger.info('> Copying Mod sources')################################################################################
-        for base, list in srces:
-            for src in list[:]:
-                tofile = os.path.join(srcdir,src)
-                fromfile = os.path.join(base,src)
-                todir = os.path.dirname(tofile)
-                if not os.path.isdir(todir):
-                    os.makedirs(todir)
-                if isbinary(fromfile):
-                    shutil.copy2(fromfile,tofile)
-                else:
-                    inputfile = open(fromfile,'rb')
-                    filedata = inputfile.read()
-                    inputfile.close()
-                    for repfrom,repto in repes.items():
-                        filedata = filedata.replace(repfrom,repto)
-                    outputfile = open(tofile,'wb')
-                    outputfile.write(filedata)
-                    outputfile.close()
-        cmd.logger.info('> Recompiling')########################################################################################
-        cmd.recompile(commands.CLIENT)
-        cmd.logger.info('> Creating Retroguard config files')###################################################################
-        cmd.creatergcfg(reobf=True)
-        mcp.reobfuscate_side(cmd,commands.CLIENT)
-        cmd.logger.info('> Creating output ZipFile')############################################################################
-        output = zipfile.ZipFile(exfile,'w',zipfile.ZIP_DEFLATED)
-        for base,dnames,fnames in os.walk(reobfdir):
+        cmd.logger.info('> Creating libraries')#################################################################################
+        lzip = zipfile.ZipFile(os.path.join(apidir,name+".jar"),"w",zipfile.ZIP_DEFLATED)
+        for dpath,dnames,fnames in os.walk(bindir):
             for fname in fnames:
-                cache = os.path.join(base,fname)
-                output.write(cache,cache.replace(reobfdir,''))
-        for base,list in reses:
-            for res in list:
-                cache = os.path.join(base,res)
-                if isbinary(cache):
-                    output.write(cache,res)
-                else:
-                    inputfile = open(cache,'rb')
-                    filedata = inputfile.read()
-                    inputfile.close()
-                    for repfrom,repto in repes.items():
-                        filedata = filedata.replace(repfrom,repto)
-                    st = os.stat(cache)
-                    zinfo = zipfile.ZipInfo(res, time.localtime(st.st_mtime)[0:6])
-                    zinfo.external_attr = (st[0] & 0xFFFF) << 16L
-                    zinfo.compress_type = output.compression
-                    zinfo.flag_bits = 0x00
-                    output.writestr(zinfo,filedata)
-        output.close()
-        cmd.logger.info('- All Done in %.2f seconds', time.time() - starttime)
+                p = os.path.join(dpath,fname)
+                if not p==os.path.abspath(os.path.join(bindir,'dummy.class')):
+                    lzip.write(p,p.replace(bindir,""))
+        lzip.close()
+        lzip = zipfile.ZipFile(os.path.join(apidir,name+"-src.jar"),"w",zipfile.ZIP_DEFLATED)
+        for dpath,dnames,fnames in os.walk(srcdir):
+            for fname in fnames:
+                p = os.path.join(dpath,fname)
+                if not p==os.path.abspath(os.path.join(srcdir,'dummy.java')):
+                    lzip.write(p,p.replace(srcdir,""))
+        lzip.close()
+    cmd.logger.info('- All Done in %.2f seconds', time.time() - starttime)
+    while len(logger.handlers) > 0:
+        logger.removeHandler(logger.handlers[0])
 if __name__ == '__main__':
-    i_all(install())
+    i_select(get_newest())
