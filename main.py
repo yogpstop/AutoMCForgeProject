@@ -37,6 +37,25 @@ def cmp_version(a,b):
         if not (resu == 0):
             return resu
         i+=1
+def select_one():
+    dirs=()
+    for dir in os.listdir(_path_):
+        if dir.startswith('.'):
+            continue
+        if not os.path.isdir(os.path.join(_path_,dir)):
+            continue
+        if not os.path.isfile(os.path.join(_path_,dir,'build.cfg'))
+            continue
+        dirs.append(dir)
+    i = 0
+    while(i<len(dirs))
+        print i+' '+dirs[i]
+        i++
+    while True:
+        num = raw_input('select target project: ')
+        if num.isdigit():
+            if int(num)<len(dirs)
+                return dirs[int(num)]
 def install():
     import urllib
     import re
@@ -140,7 +159,7 @@ def install():
     dummyjava.write('public class dummy{}')
     dummyjava.close()
     return mcversion
-def get_newest():
+def get_versions():
     versions = []
     for dir in os.listdir(os.path.join(_path_,'.api')):
         if not dir.startswith('Forge'):
@@ -148,8 +167,10 @@ def get_newest():
         versions.append(dir.replace('Forge',''))
     if len(versions)==0:
         versions.append(install())
-    versions = sorted(versions, cmp=cmp_version,reverse=True)
-    return versions[0]
+    versions = sorted(versions, cmp=cmp_version)
+    return versions
+def get_newest():
+    return get_versions()[-1]
 def i_eclipse(dir,version=None):
     from xml.etree.ElementTree import ElementTree,Element
     todir = os.path.join(_path_,dir)
@@ -157,9 +178,12 @@ def i_eclipse(dir,version=None):
     if not os.path.isfile(cf):
         print dir+" doesn't have build.cfg. Create it!"
         return
-    print '> Copying eclipse project files to '+dir
     if version == None:
         version = get_newest()
+    if not version in get_versions():
+        print '> Minecraft version is invalid. Change to newest'
+        version = get_newest()
+    print '> Copying eclipse project files to '+dir
     config = ConfigParser.SafeConfigParser()
     config.read(cf)
     config.set('pj','mcv',version)
@@ -196,6 +220,9 @@ def i_eclipse(dir,version=None):
 def i_select(version=None,all=False):
     if version == None:
         version = get_newest()
+    if not version in get_versions():
+        print '> Minecraft version is invalid. Change to newest'
+        version = get_newest()
     for dir in os.listdir(_path_):
         if dir.startswith('.'):
             continue
@@ -210,9 +237,9 @@ def i_select(version=None,all=False):
                 ret = raw_input(dir+' is MinecraftForge project[y/n]?')
                 if ret[0] == 'y' or ret[0] == 'Y':
                     i_eclipse(dir,version)
-                    break;
+                    break
                 if ret[0] == 'n' or ret[0] == 'N':
-                    break;
+                    break
 def build(pname):
     starttime = time.time()
     pdir = os.path.join(_path_,pname)
@@ -223,9 +250,11 @@ def build(pname):
     config = ConfigParser.SafeConfigParser()
     config.read(cf)
     mversion = config.get('pj','version')
+    fversion = ''
     if config.has_option('pj','mcv'):
         fversion = config.get('pj','mcv')
-    else:
+    if not fversion in get_versions():
+        print '> Minecraft version is invalid. Change to newest'
         fversion = get_newest()
     if config.has_option('pj','out'):
         out = config.get('pj','out').replace('/',os.sep)
@@ -275,7 +304,7 @@ def build(pname):
         for rep in config.get('pj','rep').split('|'):
             bef,aft=rep.split('=')
             repes[bef] = aft
-    cmd.logger.info('> Cleaning directories')###############################################################################
+    cmd.logger.info('> Cleaning directories')###################################################################################
     for path,dnames,fnames in os.walk(srcdir):
         for fname in fnames:
             os.remove(os.path.join(path,fname))
@@ -283,9 +312,9 @@ def build(pname):
     dummyjava.write('public class dummy{}')
     dummyjava.close()
     cmd.cleanbindirs(commands.CLIENT)
-    cmd.logger.info('> Recompiling')########################################################################################
+    cmd.logger.info('> Recompiling')############################################################################################
     cmd.recompile(commands.CLIENT)
-    cmd.logger.info('> Extracting forge binaries')##########################################################################
+    cmd.logger.info('> Extracting forge binaries')##############################################################################
     deobfjar = zipfile.ZipFile(os.path.join(apidir,'deobfMC.jar'),'r')
     for f in deobfjar.namelist():
         cache = os.path.join(bindir,f)
@@ -295,7 +324,7 @@ def build(pname):
             else:
                 deobfjar.extract(f,bindir)
     deobfjar.close()
-    if len(apies) > 0:#################################################################################################
+    if len(apies) > 0:##########################################################################################################
         cmd.logger.info('> Extracting api binaries')
         for api in apies:
             zf = zipfile.ZipFile(os.path.join(apidir,api+'.jar'),'r')
@@ -307,9 +336,9 @@ def build(pname):
                     else:
                         zf.extract(f,bindir)
             zf.close()
-    cmd.logger.info('> Generating md5s')####################################################################################
+    cmd.logger.info('> Generating md5s')########################################################################################
     cmd.gathermd5s(commands.CLIENT)
-    cmd.logger.info('> Copying Mod sources')################################################################################
+    cmd.logger.info('> Copying Mod sources')####################################################################################
     for base, list in srces:
         for src in list[:]:
             tofile = os.path.join(srcdir,src)
@@ -328,13 +357,13 @@ def build(pname):
                 outputfile = open(tofile,'wb')
                 outputfile.write(filedata)
                 outputfile.close()
-    cmd.logger.info('> Recompiling')########################################################################################
+    cmd.logger.info('> Recompiling')############################################################################################
     cmd.recompile(commands.CLIENT)
-    cmd.logger.info('> Creating Retroguard config files')###################################################################
+    cmd.logger.info('> Creating Retroguard config files')#######################################################################
     cmd.creatergcfg(reobf=True)
-    cmd.logger.info('> Reobfuscating')######################################################################################
+    cmd.logger.info('> Reobfuscating')##########################################################################################
     mcp.reobfuscate_side(cmd,commands.CLIENT)
-    cmd.logger.info('> Creating output ZipFile')############################################################################
+    cmd.logger.info('> Creating output ZipFile')################################################################################
     output = zipfile.ZipFile(exfile,'w',zipfile.ZIP_DEFLATED)
     for base,dnames,fnames in os.walk(reobfdir):
         for fname in fnames:
@@ -360,7 +389,7 @@ def build(pname):
     output.close()
     if config.has_option('pj','capif'):
         name = config.get('pj','capif')
-        cmd.logger.info('> Cleaning bin directory')###############################################################################
+        cmd.logger.info('> Cleaning bin directory')#############################################################################
         cmd.cleanbindirs(commands.CLIENT)
         cmd.logger.info('> Recompiling')########################################################################################
         cmd.recompile(commands.CLIENT)
@@ -382,5 +411,38 @@ def build(pname):
     cmd.logger.info('- All Done in %.2f seconds', time.time() - starttime)
     while len(logger.handlers) > 0:
         logger.removeHandler(logger.handlers[0])
+def main(cur=None):
+    if cur == None:
+        cur = get_newest()
+    while True:
+        print '0. exit'
+        print '1. build project (an project chosen by user) *current minecraft version is unavailable'
+        print '2. update eclipse project file (all projects)'
+        print '3. update eclipse project file (some projects chosen by user)'
+        print '4. update eclipse project file (an project chosen by user)'
+        print '5. install new minecraft forge'
+        print '6. change minecraft version'
+        print 'current minecraft version : '+cur
+        input = raw_input('>')
+        if input=='0':
+            return
+        elif input=='1':
+            build(select_one())
+        elif input=='2':
+            i_select(cur,True)
+        elif input=='3':
+            i_select(cur)
+        elif input=='4':
+            i_eclipse(select_one())
+        elif input=='5':
+            cur = install()
+        elif input=='6':
+            while True:
+                for v in get_versions():
+                    print v
+                input = raw_input('select new minecraft version')
+                if input in get_versions():
+                    cur = input
+                    break
 if __name__ == '__main__':
-    i_select(get_newest())
+    main()
