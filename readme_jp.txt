@@ -1,53 +1,53 @@
-�g�p���@
-1.build.cfg���v���W�F�N�g�t�H���_�ɍ쐬���A�K�v�ɉ����Ĉȉ��̍��ڂ��L�q����
-��1����1�s
-�K�{����
-    1.�t�@�C���擪��"[pj]"�ƋL�q����B
-    2.�\�[�X�R�[�h�̓������f�B���N�g����"src="�ɑ����ċL�q����B(��1,2,3,4)
-    3."version="�ɑ����āAMod�̃o�[�W�������L�q����B
-�C�ӎ���
-    4.���\�[�X���[�߂Ă���f�B���N�g���������"res="�ɑ����ċL�q����B(��1,2,3,4)
-    5.����MOD�̃r���h��API���K�v�Ȃ�K�v��API�̖��O��"api="�ɑ����ċL�q����B(��1,2,5)
-    6.����MOD��API�Ƃ��ďo�͂�������Ώo�͂�����API�̖��O��"capif="�ɑ����ċL�q����B(��1,6)
-    7.�\�[�X�R�[�h�y�у��\�[�X�t�@�C���̒��ŏ����������������񂪂���΁A"rep="�ɑ����ċL�q����B(��7)
-    8.�o�̓t�@�C�����y�яꏊ���w�肵�������"out="�ɑ����ċL�q����B(��1,3,9)
-    9.(�񐄏�)Minecraft�̃o�[�W�������蓮�Ŏw�肵�������"mcv="�ɑ����ċL�q����B(��8)
-��
-    1.�f�B���N�g���̕���������"/"�ł���
-        ex)"dir"�t�H���_����"ff"�t�H���_���w�肷��ꍇ�́A"dir/ff"
-    2.�����̍��ڂ��w�肷��ۂ�":"�ŋ�؂�(=Windows���Ɛ�΃p�X�̎w��͕s�\)
-        ex)"a"�t�H���_��"b"�t�H���_��"c/d"�t�H���_���w�肷��ꍇ�́A"a:b:c/d"
-    3.�v���W�F�N�g�t�H���_����̑��΃p�X�Ŏw�肷��
-        ex)"�v���W�F�N�g�t�H���_/a/b/c"�́A"a/b/c"
-    4.������"/"������ꍇ�́A���̃t�H���_�̒��g���R�s�[����B�Ȃ��ꍇ�͂��̃t�H���_���ƃR�s�[����
-        ex)"src"�Ǝw�肵���ꍇ�A����t�H���_��"src"�t�H���_�����������B
-        ex)"src/"�Ǝw�肵���ꍇ�A����t�H���_�����ɁA"src"�̒��g���R�s�[�����B
-    5.�C�ӎ���6�Ŏw�肵�����O�Ɉ�v������
-        ex)"capif=TestCraft"�Ǝw�肵�ďo�͂���API���g��������΁A"api=TestCraft"�Ǝw�肷��B
-    6.�����ŕK�v�ȏꏊ�ɕۑ������̂ŁA�����ŃR�s�[�����肵�Ȃ��Ă悢
-        ex)"capif=TestCraft"�Ǝw�肵�Ĉ�xBuild����Εʂ̃v���W�F�N�g����API�Ƃ��Ďg�p�o����B
-    7.�e���ڂ�"|"�ŕ������A�ϊ��O�ƕϊ���̕������"="�ŋ�؂�
-        ex)"@TEST@"��"flower"�ɁA"#TEST#"��"rose"�ɕϊ���������΁A"@TEST@=flower|#TEST#=rose"�Ǝw�肷��B
-    8.eclipse�̃v���W�F�N�g���Z�b�g�A�b�v����ۂɎ����œ��͂����̂ŁA�蓮�ł̐ݒ�͔񐄏�
-        ex)update eclipse project file�����s����΁A������mcv�̃I�v�V�����̓��e���w�肳���B
-    9.�f�t�H���g�ł́A"�v���W�F�N�g�t�H���_/dist/(Minecraft�̃o�[�W����)/(�v���W�F�N�g��)-(MOD�̃o�[�W����).zip"�ɏo�͂����B
-�Ȃ��A�ǂ̍��ڂ��]���ȃX�y�[�X�������Ă���ƃG���[���o�邽�ߒ��ӂ��邱�ƁB
-2.�����|�W�g���̒��g���A�v���W�F�N�g�t�H���_��1��(���[�N�X�y�[�X�t�H���_)�ɑS�ăR�s�[����B(.git�͕s�v)
-3.boot.bat��boot.sh���N������B
-4.����N�����͎�����forge�̃C���X�g�[�����n�܂邽�߁A�w���ɏ]����Minecraft��Forge�̃o�[�W�������w�肷��B
-5.(����N������Forge�C���X�g�[�����I��莟��)���j���[���\������邽�߁A�s���������Ƃ�I�ԁB
+使用方法
+1.build.cfgをプロジェクトフォルダに作成し、必要に応じて以下の項目を記述する
+※1項目1行
+必須項目
+    1.ファイル先頭に"[pj]"と記述する。
+    2.ソースコードの入ったディレクトリを"src="に続けて記述する。(注1,2,3,4)
+    3."version="に続けて、Modのバージョンを記述する。
+任意事項
+    4.リソースが納めてあるディレクトリがあれば"res="に続けて記述する。(注1,2,3,4)
+    5.そのMODのビルドにAPIが必要なら必要なAPIの名前を"api="に続けて記述する。(注1,2,5)
+    6.そのMODをAPIとして出力したければ出力したいAPIの名前を"capif="に続けて記述する。(注1,6)
+    7.ソースコード及びリソースファイルの中で書き換えたい文字列があれば、"rep="に続けて記述する。(注7)
+    8.出力ファイル名及び場所を指定したければ"out="に続けて記述する。(注1,3,9)
+    9.(非推奨)Minecraftのバージョンを手動で指定したければ"mcv="に続けて記述する。(注8)
+注
+    1.ディレクトリの分割文字は"/"である
+        ex)"dir"フォルダ内の"ff"フォルダを指定する場合は、"dir/ff"
+    2.複数の項目を指定する際は":"で区切る(=Windowsだと絶対パスの指定は不可能)
+        ex)"a"フォルダと"b"フォルダと"c/d"フォルダを指定する場合は、"a:b:c/d"
+    3.プロジェクトフォルダからの相対パスで指定する
+        ex)"プロジェクトフォルダ/a/b/c"は、"a/b/c"
+    4.末尾に"/"がある場合は、そのフォルダの中身をコピーする。ない場合はそのフォルダごとコピーする
+        ex)"src"と指定した場合、宛先フォルダに"src"フォルダが生成される。
+        ex)"src/"と指定した場合、宛先フォルダ直下に、"src"の中身がコピーされる。
+    5.任意事項6で指定した名前に一致させる
+        ex)"capif=TestCraft"と指定して出力したAPIを使いたければ、"api=TestCraft"と指定する。
+    6.自動で必要な場所に保存されるので、自分でコピーしたりしなくてよい
+        ex)"capif=TestCraft"と指定して一度Buildすれば別のプロジェクトからAPIとして使用出来る。
+    7.各項目は"|"で分割し、変換前と変換後の文字列は"="で区切る
+        ex)"@TEST@"を"flower"に、"#TEST#"を"rose"に変換したければ、"@TEST@=flower|#TEST#=rose"と指定する。
+    8.eclipseのプロジェクトをセットアップする際に自動で入力されるので、手動での設定は非推奨
+        ex)update eclipse project fileを実行すれば、自動でmcvのオプションの内容が指定される。
+    9.デフォルトでは、"プロジェクトフォルダ/dist/(Minecraftのバージョン)/(プロジェクト名)-(MODのバージョン).zip"に出力される。
+なお、どの項目も余分なスペースが入っているとエラーが出るため注意すること。
+2.当リポジトリの中身を、プロジェクトフォルダの1つ上(ワークスペースフォルダ)に全てコピーする。(.gitは不要)
+3.boot.batかboot.shを起動する。
+4.初回起動時は自動でforgeのインストールが始まるため、指示に従ってMinecraftとForgeのバージョンを指定する。
+5.(初回起動時はForgeインストールが終わり次第)メニューが表示されるため、行いたいことを選ぶ。
     '0. exit'
-        �X�N���v�g���I������
+        スクリプトを終了する
     '1. build project (an project chosen by user) *current minecraft version is unavailable'
-        ���̉�ʂőI������1�̃v���W�F�N�g���r���h����B(���ڂ̌�ɏo�Ă�Minecraft�̃o�[�W�����͖���(build.cfg�ɋL�q���ꂽ�o�[�W�������g�p�����))
+        次の画面で選択した1つのプロジェクトをビルドする。(項目の後に出てるMinecraftのバージョンは無効(build.cfgに記述されたバージョンが使用される))
     '2. update eclipse project file (all projects)'
-        build.cfg�����݂���v���W�F�N�g�t�H���_�S�ĂɁA���ݑI�𒆂̃o�[�W������Forge�ɍ��킹��eclipse�v���W�F�N�g���C���X�g�[������B
+        build.cfgが存在するプロジェクトフォルダ全てに、現在選択中のバージョンのForgeに合わせたeclipseプロジェクトをインストールする。
     '3. update eclipse project file (some projects chosen by user)'
-        build.cfg�����݂���v���W�F�N�g�t�H���_�̒��ŁA���[�U�[���I�񂾕����̃t�H���_�Ɍ��ݑI�𒆂̃o�[�W������Forge�ɍ��킹��eclipse�v���W�F�N�g���C���X�g�[������B
+        build.cfgが存在するプロジェクトフォルダの中で、ユーザーが選んだ複数のフォルダに現在選択中のバージョンのForgeに合わせたeclipseプロジェクトをインストールする。
     '4. update eclipse project file (an project chosen by user)'
-        build.cfg�����݂���v���W�F�N�g�t�H���_�̒��ŁA���[�U�[���I��1�̃t�H���_�Ɍ��ݑI�𒆂̃o�[�W������Forge�ɍ��킹��eclipse�v���W�F�N�g���C���X�g�[������B
+        build.cfgが存在するプロジェクトフォルダの中で、ユーザーが選んだ1つのフォルダに現在選択中のバージョンのForgeに合わせたeclipseプロジェクトをインストールする。
     '5. install new minecraft forge'
-        �V����Forge���C���X�g�[������B(1��Minecraft�̃o�[�W�����ɑ΂���1��Forge�������݂ł��Ȃ��B���̂��߁A���łɂ���Minecraft�̃o�[�W������I������ƁA�㏑�������B)
+        新しくForgeをインストールする。(1つのMinecraftのバージョンに対して1つのForgeしか存在できない。そのため、すでにあるMinecraftのバージョンを選択すると、上書きされる。)
     '6. change minecraft version'
-        ���ݑI�𒆂�Minecraft�o�[�W������ύX����B
-6.��{�I�ɑI����ʂł́A��Ɍ�₪�o��̂ł��̒�����Y��������̂�I�����Ă����B
+        現在選択中のMinecraftバージョンを変更する。
+6.基本的に選択画面では、先に候補が出るのでその中から該当するものを選択していく。
