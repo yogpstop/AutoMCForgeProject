@@ -440,7 +440,7 @@ def main(cur=None):
             while True:
                 for v in get_versions():
                     print v
-                input = raw_input('select new minecraft version')
+                input = raw_input('select new minecraft version: ')
                 if input in get_versions():
                     cur = input
                     break
