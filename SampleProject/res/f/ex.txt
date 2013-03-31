@@ -1,1 +1,3 @@
 This file saved on "f/ex.txt"
+#FROM#
+previous line replaced to (TO)
