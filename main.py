@@ -85,7 +85,7 @@ def install():
     while True:
         bnum = raw_input('select Forge build: ')
         for build in builds[mcversion]:
-            if build[0]==bnum:
+            if build[0]==bnum or build[0].split('.')[-1]==bnum:
                 urllib.urlretrieve(build[2],'forge.zip')
                 done = True
                 break
@@ -304,6 +304,9 @@ def build(pname):
         for rep in config.get('pj','rep').split('|'):
             bef,aft=rep.split('=')
             repes[bef] = aft
+    srg = False
+    if config.has_option('pj','srg'):
+        srg = config.getboolean('pj','srg')
     cmd.logger.info('> Cleaning directories')###################################################################################
     for path,dnames,fnames in os.walk(srcdir):
         for fname in fnames:
@@ -360,9 +363,16 @@ def build(pname):
     cmd.logger.info('> Recompiling')############################################################################################
     cmd.recompile(commands.CLIENT)
     cmd.logger.info('> Creating Retroguard config files')#######################################################################
-    cmd.creatergcfg(reobf=True)
+    if srg:
+        cmd.createreobfsrg()
+        cmd.creatergcfg(reobf=True, srg_names=True)
+    else:
+        cmd.creatergcfg(reobf=True)
     cmd.logger.info('> Reobfuscating')##########################################################################################
-    mcp.reobfuscate_side(cmd,commands.CLIENT)
+    if srg:
+        mcp.reobfuscate_side(cmd,commands.CLIENT,srg_names=True)
+    else:
+        mcp.reobfuscate_side(cmd,commands.CLIENT)
     cmd.logger.info('> Creating output ZipFile')################################################################################
     output = zipfile.ZipFile(exfile,'w',zipfile.ZIP_DEFLATED)
     for base,dnames,fnames in os.walk(reobfdir):
