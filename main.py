@@ -145,7 +145,7 @@ def install():
     linkedResources = tree.find("linkedResources")
     common_src_dir = os.path.join(src_dir,'common')+os.sep
     common_src_dir_exist = os.path.isdir(common_dir)
-    for link in linkedResources.getiterator("link"):
+    for link in linkedResources.getiterator("link")[:]:
         name = link.findtext("name")
         if name == "src" or name == "common":
             linkedResources.remove(link)
@@ -158,7 +158,7 @@ def install():
     tree = ElementTree()
     cp=os.path.join(basedir,".classpath")
     tree.parse(cp)
-    for cpe in tree.getroot().getiterator("classpathentry"):
+    for cpe in tree.getroot().getiterator("classpathentry")[:]:
         path = cpe.get("path")
         if path == "src" or path == "common":
             tree.getroot().remove(cpe)
