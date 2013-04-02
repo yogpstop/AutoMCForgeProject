@@ -1,7 +1,6 @@
-import os,sys,shutil,zipfile,time,logging
+import os,sys,shutil,zipfile,time
 from ConfigParser import SafeConfigParser
 _path_ = os.path.dirname(os.path.abspath(__file__))
-logger = logging.getLogger()
 def isbinary(file):
     f = open(file,'rb')
     for b in f.read():
@@ -114,7 +113,7 @@ def install():
     config = SafeConfigParser()
     conffile = os.path.join(mcp_dir,'conf','mcp.cfg')
     config.read(conffile)
-    src_dir = os.path.join(mcp_dir,config.get('DEFALUT','DirSrc'))
+    src_dir = os.path.join(mcp_dir,config.get('DEFAULT','DirSrc'))
     setup_fml(fml_dir, mcp_dir)
     apply_fml_patches(fml_dir, mcp_dir, src_dir)
     finish_setup_fml(fml_dir, mcp_dir)
@@ -133,23 +132,24 @@ def install():
     if os.path.isdir(os.path.join(mcp_dir,os.path.normpath(config.get('OUTPUT','srcserver')))):
         updatenames_side(cmd,SERVER)
         updatemd5_side(cmd,SERVER)
+    reset_logger()
     print '> Minecraft Forge Setup Finished'
     shutil.rmtree(forge_dir)
     os.remove(forge_zip)
     print '> Editing eclipse workspace'#########################################################################################
     mcploc = "$%7BWORKSPACE_LOC%7D/.api/Forge"+mcversion
     tree = ElementTree()
-    basedir = os.path.join(mcp_dir,mcp_cfg.get('DEFALUT','DirEclipse'),'Minecraft')
+    basedir = os.path.join(mcp_dir,config.get('DEFAULT','DirEclipse'),'Minecraft')
     pj=os.path.join(basedir,".project")
     tree.parse(pj)
     linkedResources = tree.find("linkedResources")
     common_src_dir = os.path.join(src_dir,'common')+os.sep
-    common_src_dir_exist = os.path.isdir(common_dir)
-    for link in linkedResources.getiterator("link")[:]:
+    common_src_dir_exist = os.path.isdir(common_src_dir)
+    for link in linkedResources.findall("link")[:]:
         name = link.findtext("name")
         if name == "src" or name == "common":
             linkedResources.remove(link)
-    for vari in tree.find("variableList").getiterator("variable"):
+    for vari in tree.find("variableList").findall("variable"):
         if vari.findtext("name") == "MCP_LOC":
             vari.find("value").text = mcploc
             break
@@ -158,7 +158,7 @@ def install():
     tree = ElementTree()
     cp=os.path.join(basedir,".classpath")
     tree.parse(cp)
-    for cpe in tree.getroot().getiterator("classpathentry")[:]:
+    for cpe in tree.getroot().findall("classpathentry")[:]:
         path = cpe.get("path")
         if path == "src" or path == "common":
             tree.getroot().remove(cpe)
@@ -166,16 +166,29 @@ def install():
         {"kind":"lib","path":"lib/deobfMC.jar","sourcepath":"lib/deobfMC-src.jar"}))
     tree.write(cp)
     print '> Creating minecraft libraries'######################################################################################
-    lib_dir = os.path.join(mcp_dir,config.get('DEFALUT','DirLib'))
-    zip = zipfile.ZipFile(os.path.join(lib_dir,"deobfMC.jar"),"w",zipfile.ZIP_DEFLATED)
+    lib_dir = os.path.join(mcp_dir,config.get('DEFAULT','DirLib'))
     cl_bin_dir = os.path.join(mcp_dir,os.path.normpath(config.get('RECOMPILE','binclient')))+os.sep
+    cl_src_dir = os.path.join(mcp_dir,os.path.normpath(config.get('OUTPUT','srcclient')))+os.sep
+    zip = zipfile.ZipFile(os.path.join(lib_dir,"deobfMC.jar"),"w",zipfile.ZIP_DEFLATED)
     for dpath,dnames,fnames in os.walk(cl_bin_dir):
         for fname in fnames:
             p = os.path.join(dpath,fname)
             zip.write(p,p.replace(cl_bin_dir,""))
+    for dpath,dnames,fnames in os.walk(cl_src_dir):
+        for fname in fnames:
+            if fname.endswith('.java'):
+                continue
+            p = os.path.join(dpath,fname)
+            zip.write(p,p.replace(cl_src_dir,""))
+    if common_src_dir_exist:
+        for dpath,dnames,fnames in os.walk(common_src_dir):
+            for fname in fnames:
+                if fname.endswith('.java'):
+                    continue
+                p = os.path.join(dpath,fname)
+                zip.write(p,p.replace(common_src_dir,""))
     zip.close()
     zip = zipfile.ZipFile(os.path.join(lib_dir,"deobfMC-src.jar"),"w",zipfile.ZIP_DEFLATED)
-    cl_src_dir = os.path.join(mcp_dir,os.path.normpath(config.get('OUTPUT','srcclient')))+os.sep
     for dpath,dnames,fnames in os.walk(cl_src_dir):
         for fname in fnames:
             p = os.path.join(dpath,fname)
@@ -204,15 +217,13 @@ def get_versions():
     return versions
 def get_newest():
     return get_versions()[-1]
-def i_eclipse(dir,version=None):
+def i_eclipse(dir,version=''):
     from xml.etree.ElementTree import ElementTree,Element
     todir = os.path.join(_path_,dir)
     cf = os.path.join(todir,'build.cfg')
     if not os.path.isfile(cf):
         print dir+" doesn't have build.cfg. Create it!"
         return
-    if version == None:
-        version = get_newest()
     if not version in get_versions():
         print '> Minecraft version is invalid. Change to newest'
         version = get_newest()
@@ -243,6 +254,56 @@ def i_eclipse(dir,version=None):
             tree.getroot().append(Element('classpathentry',
                 {'kind':'lib','path':'lib/'+api+'.jar','sourcepath':'lib/'+api+'-src.jar'}))
     tree.write(os.path.join(todir,'.classpath'))
+
+    run_root = Element('launchConfiguration',
+        {'type':"org.eclipse.jdt.launching.localJavaApplication"})
+    cache = Element('listAttribute',{'key':"org.eclipse.debug.core.MAPPED_RESOURCE_PATHS"})
+    cache.append(Element('listEntry',{'value':"/"+dir+"/lib/deobfMC.jar"}))
+    run_root.append(cache)
+    cache = Element('listAttribute',{'key':"org.eclipse.debug.core.MAPPED_RESOURCE_TYPES"})
+    cache.append(Element('listEntry',{'value':"1"}))
+    run_root.append(cache)
+    from StringIO import StringIO
+    cache_list = Element('listAttribute',{'key':"org.eclipse.jdt.launching.CLASSPATH"})
+    for ctrb in tree.getroot().findall('classpathentry'):
+        if not ctrb.get('kind') == 'con':
+            continue
+        cacheIO = StringIO()
+        cacheTree = ElementTree(Element('runtimeClasspathEntry',
+            {'containerPath':ctrb.get('path'),'javaProject':dir,'path':'1','type':'4'}))
+        cacheTree.write(cacheIO)
+        cache_list.append(Element('listEntry',{'value':cacheIO.getvalue()}))
+        cacheIO.close()
+    cacheIO = StringIO()
+    cacheTree = ElementTree(Element('runtimeClasspathEntry',
+        {'id':'org.eclipse.jdt.launching.classpathentry.defaultClasspath'}))
+    cacheTree.getroot().append(Element('memento',{'exportedEntriesOnly':'false','project':dir}))
+    cacheTree.write(cacheIO)
+    cache_list.append(Element('listEntry',{'value':cacheIO.getvalue()}))
+    cacheIO.close()
+    if config.has_option('pj','res'):
+        for res in config.get('pj','res').split(':'):
+            cacheIO = StringIO()
+            cacheTree = ElementTree(Element('runtimeClasspathEntry',
+                {'internalArchive':'/'+dir+'/'+res,'path':'3','type':'2'}))
+            cacheTree.write(cacheIO)
+            cache_list.append(Element('listEntry',{'value':cacheIO.getvalue()}))
+            cacheIO.close()
+    run_root.append(cache_list)
+    run_root.append(Element('booleanAttribute',
+        {'key':"org.eclipse.jdt.launching.DEFAULT_CLASSPATH",'value':"false"}))
+    run_root.append(Element('stringAttribute',
+        {'key':"org.eclipse.jdt.launching.MAIN_TYPE",'value':"Start"}))
+    run_root.append(Element('stringAttribute',
+        {'key':"org.eclipse.jdt.launching.PROJECT_ATTR",'value':dir}))
+    run_root.append(Element('stringAttribute',
+        {'key':"org.eclipse.jdt.launching.VM_ARGUMENTS",'value':"-Djava.library.path=./bin/natives"}))
+    run_root.append(Element('stringAttribute',
+        {'key':"org.eclipse.jdt.launching.WORKING_DIRECTORY",'value':"${workspace_loc:"+dir+"/jars}"}))
+    targetDir = os.path.join(_path_,'.metadata','.plugins','org.eclipse.debug.core','.launches')
+    if not os.path.isdir(targetDir):
+        os.path.makedirs(targetDir)
+    ElementTree(run_root).write(os.path.join(targetDir,dir+'Boot.launch'))
     inputfile = open(os.path.join(fromdir,'.project'),'rb')
     filedata = inputfile.read()
     inputfile.close()
@@ -325,11 +386,19 @@ def build(pname):
         ndir = os.path.abspath(os.path.join(pj_dir,os.path.dirname(dir)))+os.sep
         dir = os.path.abspath(os.path.join(pj_dir,dir))
         cache = []
+        res_cache = []
         for fpath, dnames, fnames in os.walk(dir):
             for fname in fnames:
-                cache.append(os.path.join(fpath,fname).replace(ndir,''))
-        tap = (ndir,cache)
-        srces.append(tap)
+                if fname.endswith('.java'):
+                    cache.append(os.path.join(fpath,fname).replace(ndir,''))
+                else:
+                    res_cache.append(os.path.join(fpath,fname).replace(ndir,''))
+        if len(cache) > 0:
+            tap = (ndir,cache)
+            srces.append(tap)
+        if len(res_cache) > 0:
+            tap = (ndir,res_cache)
+            reses.append(tap)
     if config.has_option('pj','res'):
         for dir in config.get('pj','res').replace('/',os.sep).split(':'):
             ndir = os.path.abspath(os.path.join(pj_dir,os.path.dirname(dir)))+os.sep
@@ -459,6 +528,23 @@ def build(pname):
                 p = os.path.join(dpath,fname)
                 if not p==os.path.abspath(os.path.join(bin_dir,'dummy.class')):
                     lzip.write(p,p.replace(bin_dir,""))
+        for base,list in reses:
+            for res in list:
+                cache = os.path.join(base,res)
+                if isbinary(cache):
+                    lzip.write(cache,res)
+                else:
+                    inputfile = open(cache,'rb')
+                    filedata = inputfile.read()
+                    inputfile.close()
+                    for repfrom,repto in repes.items():
+                        filedata = filedata.replace(repfrom,repto)
+                    st = os.stat(cache)
+                    zinfo = zipfile.ZipInfo(res, time.localtime(st.st_mtime)[0:6])
+                    zinfo.external_attr = (st[0] & 0xFFFF) << 16L
+                    zinfo.compress_type = lzip.compression
+                    zinfo.flag_bits = 0x00
+                    lzip.writestr(zinfo,filedata)
         lzip.close()
         lzip = zipfile.ZipFile(os.path.join(lib_dir,name+"-src.jar"),"w",zipfile.ZIP_DEFLATED)
         for dpath,dnames,fnames in os.walk(src_dir):
@@ -468,6 +554,8 @@ def build(pname):
                     lzip.write(p,p.replace(src_dir,""))
         lzip.close()
     cmd.logger.info('- All Done in %.2f seconds', time.time() - starttime)
+    import logging
+    logger = logging.getLogger()
     while len(logger.handlers) > 0:
         logger.removeHandler(logger.handlers[0])
 def main(cur=None):
