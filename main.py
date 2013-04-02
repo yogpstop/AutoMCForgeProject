@@ -302,7 +302,7 @@ def i_eclipse(dir,version=''):
         {'key':"org.eclipse.jdt.launching.WORKING_DIRECTORY",'value':"${workspace_loc:"+dir+"/jars}"}))
     targetDir = os.path.join(_path_,'.metadata','.plugins','org.eclipse.debug.core','.launches')
     if not os.path.isdir(targetDir):
-        os.path.makedirs(targetDir)
+        os.makedirs(targetDir)
     ElementTree(run_root).write(os.path.join(targetDir,dir+'Boot.launch'))
     inputfile = open(os.path.join(fromdir,'.project'),'rb')
     filedata = inputfile.read()
