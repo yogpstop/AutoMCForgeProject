@@ -241,12 +241,14 @@ def i_eclipse(dir,version=''):
         if src.endswith('/'):
             tree.getroot().append(Element("classpathentry",{"kind":"src","path":src[:-1]}))
         else:
-            ssrc = src.split('/')
-            if len(src)==1:
-                src = ssrc[0]
+            point = src.rfind('/')
+            if point == -1:
+                bsrc = ''
+                nsrc = src
             else:
-                src = '/'.join(ssrc[:-1])
-            tree.getroot().append(Element("classpathentry",{"kind":"src","path":src,"including":ssrc[-1]+"/"}))
+                bsrc = src[0:point]
+                nsrc = src[point+1:-1]+'/'
+            tree.getroot().append(Element("classpathentry",{"kind":"src","path":bsrc,"including":nsrc}))
     if config.has_option('pj','api'):
         for api in config.get('pj','api').split(':'):
             tree.getroot().append(Element('classpathentry',
