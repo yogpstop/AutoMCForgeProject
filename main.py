@@ -241,14 +241,12 @@ def i_eclipse(dir,version=''):
         if src.endswith('/'):
             tree.getroot().append(Element("classpathentry",{"kind":"src","path":src[:-1]}))
         else:
-            src = src.split('/')
+            ssrc = src.split('/')
             if len(src)==1:
-                src = src[0]
+                src = ssrc[0]
             else:
-                src = '/'.join(src[:-1])
-            if src=='':
-                src='.'
-            tree.getroot().append(Element("classpathentry",{"kind":"src","path":src}))
+                src = '/'.join(ssrc[:-1])
+            tree.getroot().append(Element("classpathentry",{"kind":"src","path":src,"including":ssrc[-1]+"/"}))
     if config.has_option('pj','api'):
         for api in config.get('pj','api').split(':'):
             tree.getroot().append(Element('classpathentry',
@@ -283,6 +281,8 @@ def i_eclipse(dir,version=''):
     cacheIO.close()
     if config.has_option('pj','res'):
         for res in config.get('pj','res').split(':'):
+            if not res.endswith('/'):
+                res = '/'.join(res.split('/')[:-1])+'/'
             cacheIO = StringIO()
             cacheTree = ElementTree(Element('runtimeClasspathEntry',
                 {'internalArchive':'/'+dir+'/'+res,'path':'3','type':'2'}))
