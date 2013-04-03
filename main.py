@@ -246,8 +246,8 @@ def i_eclipse(dir,version=''):
                 bsrc = ''
                 nsrc = src
             else:
-                bsrc = src[0:point]
-                nsrc = src[point+1:-1]+'/'
+                bsrc = src[:point]
+                nsrc = src[point+1:]+'/'
             tree.getroot().append(Element("classpathentry",{"kind":"src","path":bsrc,"including":nsrc}))
     if config.has_option('pj','api'):
         for api in config.get('pj','api').split(':'):
@@ -284,7 +284,11 @@ def i_eclipse(dir,version=''):
     if config.has_option('pj','res'):
         for res in config.get('pj','res').split(':'):
             if not res.endswith('/'):
-                res = '/'.join(res.split('/')[:-1])+'/'
+                point = res.rfind('/')
+                if point == -1:
+                    res = ''
+                else:
+                    res = res[:point+1]
             cacheIO = StringIO()
             cacheTree = ElementTree(Element('runtimeClasspathEntry',
                 {'internalArchive':'/'+dir+'/'+res,'path':'3','type':'2'}))
