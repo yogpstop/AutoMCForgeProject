@@ -443,7 +443,8 @@ def build(pname):
             if f.endswith('/'):
                 os.mkdir(cache)
             else:
-                deobfjar.extract(f,bin_dir)
+                if f.endswith('.class'):
+                    deobfjar.extract(f,bin_dir)
     deobfjar.close()
     if len(apies) > 0:##########################################################################################################
         cmd.logger.info('> Extracting api binaries')
@@ -455,7 +456,8 @@ def build(pname):
                     if f.endswith('/'):
                         os.mkdir(cache)
                     else:
-                        zf.extract(f,bin_dir)
+                        if f.endswith('.class'):
+                            zf.extract(f,bin_dir)
             zf.close()
     cmd.logger.info('> Generating md5s')########################################################################################
     cmd.gathermd5s(commands.CLIENT)
