@@ -384,7 +384,7 @@ def build(pname):
     reses = []
     apies = []
     repes = {}
-    repes['@VERSION@']=fversion
+    repes['@VERSION@']=mversion
     os.chdir(mcp_dir)
     import commands,mcp
     cmd = commands.Commands()
@@ -588,7 +588,7 @@ def main(cur=None):
         elif input=='3':
             i_select(cur)
         elif input=='4':
-            i_eclipse(select_one())
+            i_eclipse(select_one(),cur)
         elif input=='5':
             cur = install()
         elif input=='6':
