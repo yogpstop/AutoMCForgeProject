@@ -303,7 +303,7 @@ def i_eclipse(dir,version=''):
     run_root.append(Element('stringAttribute',
         {'key':"org.eclipse.jdt.launching.PROJECT_ATTR",'value':dir}))
     run_root.append(Element('stringAttribute',
-        {'key':"org.eclipse.jdt.launching.VM_ARGUMENTS",'value':"-Djava.library.path=./bin/natives"}))
+        {'key':"org.eclipse.jdt.launching.VM_ARGUMENTS",'value':"-Djava.library.path=./bin/natives  -Xmx1024M -Xms256M"}))
     run_root.append(Element('stringAttribute',
         {'key':"org.eclipse.jdt.launching.WORKING_DIRECTORY",'value':"${workspace_loc:"+dir+"/jars}"}))
     targetDir = os.path.join(_path_,'.metadata','.plugins','org.eclipse.debug.core','.launches')
