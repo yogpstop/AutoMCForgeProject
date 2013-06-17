@@ -62,18 +62,17 @@ def install():
     from xml.etree.ElementTree import ElementTree, Element
     forge_zip = os.path.join(_path_,'forge.zip')
     print '> Start forge install'###############################################################################################
-    fl = urllib.urlopen('http://files.minecraftforge.net/').read().decode().replace('&nbsp;',' ').replace('\n',' ')
-    fll = re.split('Build ',fl)
-    regax = re.compile('\A(.*?): (.*?) for MC: (.*?)    .*?src.*?<a[^>]*?href="(.*?)"[^>]*?>\*</a>')
+    fl = urllib.urlopen('http://files.minecraftforge.net/').read().decode().splitlines()
+    regax = re.compile('http://files.minecraftforge.net/minecraftforge/minecraftforge-src-([^-]*)-([^-]*).zip')
     builds = {}
-    for build in fll:
-        m = regax.match(build)
+    for build in fl:
+        m = regax.search(build)
         if m:
-            if cmp_version('4.0.0.188',m.group(1)) > 0:
+            if cmp_version('4.0.0.188',m.group(2)) > 0:
                 continue
-            if not builds.has_key(m.group(3)):
-                builds[m.group(3)] = []
-            builds[m.group(3)].append([m.group(1),m.group(2),m.group(4)])
+            if not builds.has_key(m.group(1)):
+                builds[m.group(1)] = {}
+            builds[m.group(1)][m.group(2)]=m.group(0)
     ############################################################################################################################
     for m in sorted(builds.keys(), cmp=cmp_version):
         print m
@@ -82,14 +81,14 @@ def install():
         if builds.has_key(mcversion):
             break
     ############################################################################################################################
-    for build in sorted(builds[mcversion],key=lambda x:x[0], cmp=cmp_version):
-        print build[0]," released on ",build[1]
+    for build in sorted(builds[mcversion].keys(), cmp=cmp_version):
+        print build
     done = False
     while True:
         bnum = raw_input('select Forge build: ')
-        for build in builds[mcversion]:
-            if build[0]==bnum or build[0].split('.')[-1]==bnum:
-                urllib.urlretrieve(build[2],forge_zip)
+        for build in builds[mcversion].keys():
+            if build==bnum or build.split('.')[-1]==bnum:
+                urllib.urlretrieve(builds[mcversion][build],forge_zip)
                 done = True
                 break
         if done:
@@ -106,17 +105,26 @@ def install():
         shutil.rmtree(mcp_dir)
     sys.path.append(fml_dir)
     sys.path.append(forge_dir)
-    from forge import apply_forge_patches
-    from fml import setup_fml, finish_setup_fml, apply_fml_patches, setup_mcp, reset_logger
+    import forge,fml
     print '> Forge ModLoader Setup Start'
-    setup_mcp(fml_dir, mcp_dir, True)
+    try:
+        fml.download_mcp(fml_dir=fml_dir,mcp_dir=mcp_dir)
+    except Exception:
+        pass
+    fml.setup_mcp(fml_dir=fml_dir, mcp_dir=mcp_dir)
     config = SafeConfigParser()
     conffile = os.path.join(mcp_dir,'conf','mcp.cfg')
     config.read(conffile)
     src_dir = os.path.join(mcp_dir,config.get('DEFAULT','DirSrc'))
-    setup_fml(fml_dir, mcp_dir)
-    apply_fml_patches(fml_dir, mcp_dir, src_dir)
-    finish_setup_fml(fml_dir, mcp_dir)
+    if not os.path.isdir(os.path.join(os.environ['HOME'],".minecraft")):
+        os.symlink(os.path.join(mcp_dir,config.get('DEFAULT','DirJars')),os.path.join(os.environ['HOME'],".minecraft"))
+        symblink=True
+    try:
+        fml.setup_fml(fml_dir=fml_dir, mcp_dir=mcp_dir)
+    except Exception:
+        fml.decompile_minecraft(fml_dir=fml_dir,mcp_dir=mcp_dir)
+    fml.apply_fml_patches(fml_dir=fml_dir, mcp_dir=mcp_dir, src_dir=src_dir)
+    fml.finish_setup_fml(fml_dir=fml_dir, mcp_dir=mcp_dir)
     print '> Forge ModLoader Setup End'
     sys.path.append(mcp_dir)
     from runtime.mcp import updatenames_side,updatemd5_side
@@ -124,7 +132,7 @@ def install():
     print '> Minecraft Forge Setup Start'
     cmd = Commands()
     print '> Applying forge patches'
-    apply_forge_patches(fml_dir, mcp_dir, forge_dir, src_dir, True)
+    forge.apply_forge_patches(fml_dir=fml_dir, mcp_dir=mcp_dir, forge_dir=forge_dir, src_dir=src_dir)
     os.chdir(mcp_dir)
     if os.path.isdir(os.path.join(mcp_dir,os.path.normpath(config.get('OUTPUT','srcclient')))):
         updatenames_side(cmd,CLIENT)
@@ -132,10 +140,12 @@ def install():
     if os.path.isdir(os.path.join(mcp_dir,os.path.normpath(config.get('OUTPUT','srcserver')))):
         updatenames_side(cmd,SERVER)
         updatemd5_side(cmd,SERVER)
-    reset_logger()
+    fml.reset_logger()
     print '> Minecraft Forge Setup Finished'
     shutil.rmtree(forge_dir)
     os.remove(forge_zip)
+    if symblink:
+        os.remove(os.path.join(os.environ['HOME'],".minecraft"))
     print '> Editing eclipse workspace'#########################################################################################
     mcploc = "$%7BWORKSPACE_LOC%7D/.api/Forge"+mcversion
     tree = ElementTree()
