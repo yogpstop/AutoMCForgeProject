@@ -1,4 +1,4 @@
-import os,sys,shutil,zipfile,time
+import os,sys,shutil,zipfile,time, copy
 from ConfigParser import SafeConfigParser
 _path_ = os.path.dirname(os.path.abspath(__file__))
 def isbinary(file):
@@ -577,15 +577,15 @@ def build(pname):
     while len(logger.handlers) > 0:
         logger.removeHandler(logger.handlers[0])
 def main(cur=None):
-    modules_backup=sys.modules
-    path_backup=sys.path
+    modules_backup=copy.copy(sys.modules)
+    path_backup=copy.copy(sys.path)
     if cur == None:
         cur = get_newest()
     sys.modules=modules_backup
     sys.path=path_backup
     while True:
-        modules_backup=sys.modules
-        path_backup=sys.path
+        modules_backup=copy.copy(sys.modules)
+        path_backup=copy.copy(sys.path)
         print '0. exit'
         print '1. build project (an project chosen by user) *current minecraft version is unavailable'
         print '2. update eclipse project file (all projects)'
