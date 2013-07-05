@@ -577,9 +577,15 @@ def build(pname):
     while len(logger.handlers) > 0:
         logger.removeHandler(logger.handlers[0])
 def main(cur=None):
+    modules_backup=sys.modules
+    path_backup=sys.path
     if cur == None:
         cur = get_newest()
+    sys.modules=modules_backup
+    sys.path=path_backup
     while True:
+        modules_backup=sys.modules
+        path_backup=sys.path
         print '0. exit'
         print '1. build project (an project chosen by user) *current minecraft version is unavailable'
         print '2. update eclipse project file (all projects)'
@@ -609,5 +615,7 @@ def main(cur=None):
                 if input in get_versions():
                     cur = input
                     break
+        sys.modules=modules_backup
+        sys.path=path_backup
 if __name__ == '__main__':
     main()
