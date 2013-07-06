@@ -1,11 +1,11 @@
 import os,sys,shutil,zipfile,time, copy
 from ConfigParser import SafeConfigParser
 _path_ = os.path.dirname(os.path.abspath(__file__))
-def isbinary(file):
+def isbinary(file):##text file contains only HT,LF,CR and basic characters
     f = open(file,'rb')
     for b in f.read():
         value = ord(b)
-        if value < 10:
+        if value < 9:
             return True
         if 10 < value and value < 13:
             return True
