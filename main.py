@@ -100,7 +100,7 @@ def install():
     ############################################################################################################################
     forge_dir = os.path.join(_path_,'forge')
     fml_dir = os.path.join(forge_dir,'fml')
-    mcp_dir = os.path.join(_path_,'.api','Forge'+mcversion)
+    mcp_dir = os.path.join(_path_,'.api','Forge'+mcversion+'-'+build)
     if os.path.isdir(mcp_dir):
         shutil.rmtree(mcp_dir)
     sys.path.append(fml_dir)
@@ -147,7 +147,7 @@ def install():
     if symblink:
         os.remove(os.path.join(os.environ['HOME'],".minecraft"))
     print '> Editing eclipse workspace'#########################################################################################
-    mcploc = "$%7BWORKSPACE_LOC%7D/.api/Forge"+mcversion
+    mcploc = "$%7BWORKSPACE_LOC%7D/.api/Forge"+mcversion+'-'+build
     tree = ElementTree()
     basedir = os.path.join(mcp_dir,config.get('DEFAULT','DirEclipse'),'Minecraft')
     pj=os.path.join(basedir,".project")
@@ -385,7 +385,7 @@ def build(pname):
     if config.has_option('pj','out'):
         out = config.get('pj','out').replace('/',os.sep)
     else:
-        out = os.path.join('dist',fversion,pname+'-'+mversion+'.zip')
+        out = os.path.join('dist',fversion.replace('-',os.sep),pname+'-'+mversion+'.zip')
     exfile = os.path.join(pj_dir,out)
     exdir = os.path.dirname(exfile)
     if not os.path.isdir(exdir):
@@ -587,7 +587,7 @@ def main(cur=None):
         modules_backup=copy.copy(sys.modules)
         path_backup=copy.copy(sys.path)
         print '0. exit'
-        print '1. build project (an project chosen by user) *current minecraft version is unavailable'
+        print '1. build project (an project chosen by user) *current minecraft version is ignored'
         print '2. update eclipse project file (all projects)'
         print '3. update eclipse project file (some projects chosen by user)'
         print '4. update eclipse project file (an project chosen by user)'
@@ -612,8 +612,12 @@ def main(cur=None):
                 for v in get_versions():
                     print v
                 input = raw_input('select new minecraft version: ')
-                if input in get_versions():
-                    cur = input
+                for version in get_versions():
+                    if version==input or version.split('.')[-1]==input:
+                        cur = version
+                        done = True
+                        break
+                if done:
                     break
         sys.modules=modules_backup
         sys.path=path_backup
