@@ -119,6 +119,8 @@ def install():
     if not os.path.isdir(os.path.join(os.environ['HOME'],".minecraft")):
         os.symlink(os.path.join(mcp_dir,config.get('DEFAULT','DirJars')),os.path.join(os.environ['HOME'],".minecraft"))
         symblink=True
+    else:
+        symlink=False
     try:
         fml.setup_fml(fml_dir=fml_dir, mcp_dir=mcp_dir)
     except Exception:
@@ -396,6 +398,11 @@ def build(pname):
     repes = {}
     repes['@VERSION@']=mversion
     os.chdir(mcp_dir)
+    if not os.path.isdir(os.path.join(os.environ['HOME'],".minecraft")):
+        os.symlink(os.path.join(mcp_dir,mcp_cfg.get('DEFAULT','DirJars')),os.path.join(os.environ['HOME'],".minecraft"))
+        symblink=True
+    else:
+        symblink=False
     import commands,mcp
     cmd = commands.Commands()
     for dir in config.get('pj','src').replace('/',os.sep).split(':'):
@@ -571,21 +578,17 @@ def build(pname):
                 if not p==os.path.abspath(os.path.join(src_dir,'dummy.java')):
                     lzip.write(p,p.replace(src_dir,""))
         lzip.close()
+    if symblink:
+        os.remove(os.path.join(os.environ['HOME'],".minecraft"))
     cmd.logger.info('- All Done in %.2f seconds', time.time() - starttime)
     import logging
     logger = logging.getLogger()
     while len(logger.handlers) > 0:
         logger.removeHandler(logger.handlers[0])
 def main(cur=None):
-    modules_backup=copy.copy(sys.modules)
-    path_backup=copy.copy(sys.path)
     if cur == None:
         cur = get_newest()
-    sys.modules=modules_backup
-    sys.path=path_backup
     while True:
-        modules_backup=copy.copy(sys.modules)
-        path_backup=copy.copy(sys.path)
         print '0. exit'
         print '1. build project (an project chosen by user) *current minecraft version is ignored'
         print '2. update eclipse project file (all projects)'
@@ -619,7 +622,5 @@ def main(cur=None):
                         break
                 if done:
                     break
-        sys.modules=modules_backup
-        sys.path=path_backup
 if __name__ == '__main__':
     main()
