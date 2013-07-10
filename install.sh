@@ -1,3 +1,3 @@
-ln -s $(pwd)/boot.sh ../boot.sh
-ln -s $(pwd)/main.py ../main.py
+#!/bin/bash
+echo -en "#!/bin/bash\npython "`basename $(pwd)`"/main.py\n" >../AMCFP.sh
 mkdir ../.api

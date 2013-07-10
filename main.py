@@ -1,6 +1,6 @@
 import os,sys,shutil,zipfile,time, copy
 from ConfigParser import SafeConfigParser
-_path_ = os.path.dirname(os.path.abspath(__file__))
+_path_ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 def isbinary(file):##text file contains only HT,LF,CR and basic characters
     f = open(file,'rb')
     for b in f.read():
@@ -112,6 +112,7 @@ def install():
     except Exception:
         pass
     fml.setup_mcp(fml_dir=fml_dir, mcp_dir=mcp_dir)
+    os.chdir(mcp_dir)
     config = SafeConfigParser()
     conffile = os.path.join(mcp_dir,'conf','mcp.cfg')
     config.read(conffile)
@@ -135,7 +136,6 @@ def install():
     cmd = Commands()
     print '> Applying forge patches'
     forge.apply_forge_patches(fml_dir=fml_dir, mcp_dir=mcp_dir, forge_dir=forge_dir, src_dir=src_dir)
-    os.chdir(mcp_dir)
     if os.path.isdir(os.path.join(mcp_dir,os.path.normpath(config.get('OUTPUT','srcclient')))):
         updatenames_side(cmd,CLIENT)
         updatemd5_side(cmd,CLIENT)
@@ -397,6 +397,9 @@ def build(pname):
     apies = []
     repes = {}
     repes['@VERSION@']=mversion
+    repes['@MCVERSION@']=fversion.split('-')[0]
+    repes['@FORGEVERSION@']=fversion.split('-')[1]
+    repes['@FORGEBUILD@']=fversion.split('.')[-1]
     os.chdir(mcp_dir)
     if not os.path.isdir(os.path.join(os.environ['HOME'],".minecraft")):
         os.symlink(os.path.join(mcp_dir,mcp_cfg.get('DEFAULT','DirJars')),os.path.join(os.environ['HOME'],".minecraft"))
