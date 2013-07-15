@@ -149,10 +149,13 @@ def install():
     if symblink:
         os.remove(os.path.join(os.environ['HOME'],".minecraft"))
     print '> Editing eclipse workspace'#########################################################################################
+    #----------Initialize Directories
     mcploc = "$%7BWORKSPACE_LOC%7D/.api/Forge"+mcversion+'-'+build
+    basedir = os.path.join(mcp_dir,config.get('DEFAULT','DirEclipse'))
+    dbg=os.path.join(basedir,".metadata",".plugins","org.eclipse.debug.core",".launches")
+    #----------.project Fixes
     tree = ElementTree()
-    basedir = os.path.join(mcp_dir,config.get('DEFAULT','DirEclipse'),'Minecraft')
-    pj=os.path.join(basedir,".project")
+    pj=os.path.join(basedir,'Minecraft',".project")
     tree.parse(pj)
     linkedResources = tree.find("linkedResources")
     common_src_dir = os.path.join(src_dir,'common')+os.sep
@@ -167,8 +170,9 @@ def install():
             break
     tree.find("name").text = "@PROJECT_NAME@"
     tree.write(pj)
+    #---------.classpath Fixes
     tree = ElementTree()
-    cp=os.path.join(basedir,".classpath")
+    cp=os.path.join(basedir,'Minecraft',".classpath")
     tree.parse(cp)
     for cpe in tree.getroot().findall("classpathentry")[:]:
         path = cpe.get("path")
@@ -177,6 +181,36 @@ def install():
     tree.getroot().insert(0,Element("classpathentry",
         {"kind":"lib","path":"lib/deobfMC.jar","sourcepath":"lib/deobfMC-src.jar"}))
     tree.write(cp)
+    #----------Client.launch Fixes
+    tree = ElementTree()
+    tree.parse(os.path.join(dbg,"Client.launch"))
+    for cache in tree.getRoot().findall('listAttribute'):
+        if cache.get('key') == 'org.eclipse.debug.core.MAPPED_RESOURCE_PATHS':
+            for cache2 in cache.findall('listEntry'):
+                if cache2.get('value').endswith('.java'):
+                    cache2.set('value','/@PROJECT_NAME@/lib/deobfMC.jar')
+            break
+    for cache in tree.getRoot().findall('stringAttribute'):
+        if cache.get('key') == 'org.eclipse.jdt.launching.PROJECT_ATTR':
+            cache.set('value','@PROJECT_NAME@')
+        if cache.get('key') == 'org.eclipse.jdt.launching.WORKING_DIRECTORY':
+            cache.set('value',"${workspace_loc:@PROJECT_NAME@/jars}")
+    tree.write(os.path.join(dbg,'Client.launch'))
+    #----------Server.launch Fixes
+    tree = ElementTree()
+    tree.parse(os.path.join(dbg,"Server.launch"))
+    for cache in tree.getRoot().findall('listAttribute'):
+        if cache.get('key') == 'org.eclipse.debug.core.MAPPED_RESOURCE_PATHS':
+            for cache2 in cache.findall('listEntry'):
+                if cache2.get('value').endswith('.java'):
+                    cache2.set('value','/@PROJECT_NAME@/lib/deobfMC.jar')
+            break
+    for cache in tree.getRoot().findall('stringAttribute'):
+        if cache.get('key') == 'org.eclipse.jdt.launching.PROJECT_ATTR':
+            cache.set('value','@PROJECT_NAME@')
+        if cache.get('key') == 'org.eclipse.jdt.launching.WORKING_DIRECTORY':
+            cache.set('value',"${workspace_loc:@PROJECT_NAME@/jars}")
+    tree.write(os.path.join(dbg,'Server.launch'))
     print '> Creating minecraft libraries'######################################################################################
     lib_dir = os.path.join(mcp_dir,config.get('DEFAULT','DirLib'))
     cl_bin_dir = os.path.join(mcp_dir,os.path.normpath(config.get('RECOMPILE','binclient')))+os.sep
@@ -240,15 +274,22 @@ def i_eclipse(dir,version=''):
         print '> Minecraft version is invalid. Change to newest'
         version = get_newest()
     print '> Copying eclipse project files to '+dir
+    #-----build.cfg Fixes
     config = SafeConfigParser()
     config.read(cf)
     config.set('pj','mcv',version)
     cff = open(cf,'w')
     config.write(cff)
     cff.close()
-    fromdir = os.path.join(_path_,'.api','Forge'+version,"eclipse","Minecraft")
+    #-----InitializeDirectories
+    fromdir = os.path.join(_path_,'.api','Forge'+version,"eclipse")
+    l_fromdir = os.path.join(fromdir,'.metadata','.plugins','org.eclipse.debug.core','.launches')
+    l_todir = os.path.join(_path_,'.metadata','.plugins','org.eclipse.debug.core','.launches')
+    if not os.path.isdir(targetDir):
+        os.makedirs(targetDir)
+    #-----.classpath File
     tree = ElementTree()
-    tree.parse(os.path.join(fromdir,'.classpath'))
+    tree.parse(os.path.join(fromdir,'Minecraft','.classpath'))
     for src in config.get('pj','src').split(':'):
         if src.endswith('/'):
             tree.getroot().append(Element("classpathentry",{"kind":"src","path":src[:-1]}))
@@ -266,68 +307,26 @@ def i_eclipse(dir,version=''):
             tree.getroot().append(Element('classpathentry',
                 {'kind':'lib','path':'lib/'+api+'.jar','sourcepath':'lib/'+api+'-src.jar'}))
     tree.write(os.path.join(todir,'.classpath'))
-
-    run_root = Element('launchConfiguration',
-        {'type':"org.eclipse.jdt.launching.localJavaApplication"})
-    cache = Element('listAttribute',{'key':"org.eclipse.debug.core.MAPPED_RESOURCE_PATHS"})
-    cache.append(Element('listEntry',{'value':"/"+dir+"/lib/deobfMC.jar"}))
-    run_root.append(cache)
-    cache = Element('listAttribute',{'key':"org.eclipse.debug.core.MAPPED_RESOURCE_TYPES"})
-    cache.append(Element('listEntry',{'value':"1"}))
-    run_root.append(cache)
-    from StringIO import StringIO
-    cache_list = Element('listAttribute',{'key':"org.eclipse.jdt.launching.CLASSPATH"})
-    for ctrb in tree.getroot().findall('classpathentry'):
-        if not ctrb.get('kind') == 'con':
-            continue
-        cacheIO = StringIO()
-        cacheTree = ElementTree(Element('runtimeClasspathEntry',
-            {'containerPath':ctrb.get('path'),'javaProject':dir,'path':'1','type':'4'}))
-        cacheTree.write(cacheIO)
-        cache_list.append(Element('listEntry',{'value':cacheIO.getvalue()}))
-        cacheIO.close()
-    cacheIO = StringIO()
-    cacheTree = ElementTree(Element('runtimeClasspathEntry',
-        {'id':'org.eclipse.jdt.launching.classpathentry.defaultClasspath'}))
-    cacheTree.getroot().append(Element('memento',{'exportedEntriesOnly':'false','project':dir}))
-    cacheTree.write(cacheIO)
-    cache_list.append(Element('listEntry',{'value':cacheIO.getvalue()}))
-    cacheIO.close()
-    if config.has_option('pj','res'):
-        for res in config.get('pj','res').split(':'):
-            if not res.endswith('/'):
-                point = res.rfind('/')
-                if point == -1:
-                    res = ''
-                else:
-                    res = res[:point+1]
-            cacheIO = StringIO()
-            cacheTree = ElementTree(Element('runtimeClasspathEntry',
-                {'internalArchive':'/'+dir+'/'+res,'path':'3','type':'2'}))
-            cacheTree.write(cacheIO)
-            cache_list.append(Element('listEntry',{'value':cacheIO.getvalue()}))
-            cacheIO.close()
-    run_root.append(cache_list)
-    run_root.append(Element('booleanAttribute',
-        {'key':"org.eclipse.jdt.launching.DEFAULT_CLASSPATH",'value':"false"}))
-    run_root.append(Element('stringAttribute',
-        {'key':"org.eclipse.jdt.launching.MAIN_TYPE",'value':"Start"}))
-    run_root.append(Element('stringAttribute',
-        {'key':"org.eclipse.jdt.launching.PROJECT_ATTR",'value':dir}))
-    run_root.append(Element('stringAttribute',
-        {'key':"org.eclipse.jdt.launching.VM_ARGUMENTS",'value':"-Djava.library.path=./bin/natives  -Xmx1024M -Xms256M"}))
-    run_root.append(Element('stringAttribute',
-        {'key':"org.eclipse.jdt.launching.WORKING_DIRECTORY",'value':"${workspace_loc:"+dir+"/jars}"}))
-    targetDir = os.path.join(_path_,'.metadata','.plugins','org.eclipse.debug.core','.launches')
-    if not os.path.isdir(targetDir):
-        os.makedirs(targetDir)
-    ElementTree(run_root).write(os.path.join(targetDir,dir+'Boot.launch'))
-    inputfile = open(os.path.join(fromdir,'.project'),'rb')
+    #-----.project File
+    inputfile = open(os.path.join(fromdir,'Minecraft','.project'),'rb')
     filedata = inputfile.read()
     inputfile.close()
-    filedata = filedata.replace('@PROJECT_NAME@',dir)
     outputfile = open(os.path.join(todir,'.project'),'wb')
-    outputfile.write(filedata)
+    outputfile.write(filedata.replace('@PROJECT_NAME@',dir))
+    outputfile.close()
+    #-----ClientBootFile
+    inputfile = open(os.path.join(l_fromdir,'Client.launch'),'rb')
+    filedata = inputfile.read()
+    inputfile.close()
+    outputfile = open(os.path.join(l_todir,dir+'Client.launch'),'wb')
+    outputfile.write(filedata.replace('@PROJECT_NAME@',dir))
+    outputfile.close()
+    #-----ServerBootFile
+    inputfile = open(os.path.join(l_fromdir,'Server.launch'),'rb')
+    filedata = inputfile.read()
+    inputfile.close()
+    outputfile = open(os.path.join(l_todir,dir+'Server.launch'),'wb')
+    outputfile.write(filedata.replace('@PROJECT_NAME@',dir))
     outputfile.close()
 def i_select(version=None,all=False):
     if version == None:
