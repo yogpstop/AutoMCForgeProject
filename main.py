@@ -88,12 +88,13 @@ def install():
         bnum = raw_input("select Forge build: ")
         for build in builds[mcversion].keys():
             if build==bnum or build.split(".")[-1]==bnum:
+                print "> Downloading MinecraftForge"
                 urllib.urlretrieve(builds[mcversion][build],forge_zip)
                 done = True
                 break
         if done:
             break
-    print "> Extracting forge"##################################################################################################
+    print "> Extracting MinecraftForge"#########################################################################################
     zf = zipfile.ZipFile(forge_zip,"r")
     zf.extractall(_path_)
     zf.close()
@@ -130,7 +131,7 @@ def install():
     fml.finish_setup_fml(fml_dir=fml_dir, mcp_dir=mcp_dir)
     print "> Forge ModLoader Setup End"
     sys.path.append(mcp_dir)
-    from runtime.mcp import updatenames_side,updatemd5_side
+    from runtime.mcp import updatenames_side,updatemd5_side,recompile_side
     from runtime.commands import Commands,CLIENT,SERVER
     print "> Minecraft Forge Setup Start"
     cmd = Commands()
@@ -139,9 +140,11 @@ def install():
     if os.path.isdir(os.path.join(mcp_dir,os.path.normpath(config.get("OUTPUT","srcclient")))):
         updatenames_side(cmd,CLIENT)
         updatemd5_side(cmd,CLIENT)
+        recompile_side(cmd,CLIENT)
     if os.path.isdir(os.path.join(mcp_dir,os.path.normpath(config.get("OUTPUT","srcserver")))):
         updatenames_side(cmd,SERVER)
         updatemd5_side(cmd,SERVER)
+        recompile_side(cmd,SERVER)
     fml.reset_logger()
     print "> Minecraft Forge Setup Finished"
     shutil.rmtree(forge_dir)
@@ -189,6 +192,8 @@ def install():
             for cache2 in cache.findall("listEntry"):
                 if cache2.get("value").endswith(".java"):
                     cache2.set("value","/@PROJECT_NAME@/lib/deobfMC.jar")
+                if cache2.get("value").startswith("/Minecraft/"):
+                    cache2.set("value",cache2.get("value").replace("/Minecraft/","/@PROJECT_NAME@/",1))
             break
     for cache in tree.getroot().findall("stringAttribute"):
         if cache.get("key") == "org.eclipse.jdt.launching.PROJECT_ATTR":
@@ -204,6 +209,8 @@ def install():
             for cache2 in cache.findall("listEntry"):
                 if cache2.get("value").endswith(".java"):
                     cache2.set("value","/@PROJECT_NAME@/lib/deobfMC.jar")
+                if cache2.get("value").startswith("/Minecraft/"):
+                    cache2.set("value",cache2.get("value").replace("/Minecraft/","/@PROJECT_NAME@/",1))
             break
     for cache in tree.getroot().findall("stringAttribute"):
         if cache.get("key") == "org.eclipse.jdt.launching.PROJECT_ATTR":
@@ -250,7 +257,7 @@ def install():
     confobj = open(conffile,"wb")
     config.write(confobj)
     confobj.close()
-    return mcversion
+    return mcversion+"-"+build
 def get_versions():
     versions = []
     for dir in os.listdir(os.path.join(_path_,".api")):
@@ -285,8 +292,8 @@ def i_eclipse(dir,version=""):
     fromdir = os.path.join(_path_,".api","Forge"+version,"eclipse")
     l_fromdir = os.path.join(fromdir,".metadata",".plugins","org.eclipse.debug.core",".launches")
     l_todir = os.path.join(_path_,".metadata",".plugins","org.eclipse.debug.core",".launches")
-    if not os.path.isdir(targetDir):
-        os.makedirs(targetDir)
+    if not os.path.isdir(l_todir):
+        os.makedirs(l_todir)
     #-----.classpath File
     tree = ElementTree()
     tree.parse(os.path.join(fromdir,"Minecraft",".classpath"))
