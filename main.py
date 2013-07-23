@@ -194,7 +194,7 @@ def install():
         if cache.get("key") == "org.eclipse.jdt.launching.WORKING_DIRECTORY":
             cache.set("value","${workspace_loc:@PROJECT_NAME@/jars}")
         if cache.get("key") == "org.eclipse.jdt.launching.VM_ARGUMENTS":
-            cache.set("value",cache.get("value")+" -Djava.library.path="+os.path.join(mcp_dir,config.get("JAR","dirnatives")).replace(os.sep,"/"))
+            cache.set("value",cache.get("value")+" -Dfml.ignoreInvalidMinecraftCertificates=true")
     tree.write(os.path.join(dbg,"Client.launch"))
     #----------Server.launch Fixes
     tree = ElementTree()
