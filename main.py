@@ -1,6 +1,7 @@
 import os, sys, shutil, zipfile, time, copy, re, urllib, logging
 from ConfigParser import SafeConfigParser
 from xml.etree.ElementTree import ElementTree, Element
+from xml.etree.ElementTree import tostring as TreeToStr
 _path_ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 def isbinary(file):##text file contains only HT,LF,CR and basic characters
     f = open(file,"rb")
@@ -115,11 +116,6 @@ def install():
     conffile = os.path.join(mcp_dir,"conf","mcp.cfg")
     config.read(conffile)
     src_dir = os.path.join(mcp_dir,config.get("DEFAULT","DirSrc"))
-    if not os.path.isdir(os.path.join(os.environ["HOME"],".minecraft")):
-        os.symlink(os.path.join(mcp_dir,config.get("DEFAULT","DirJars")),os.path.join(os.environ["HOME"],".minecraft"))
-        symblink=True
-    else:
-        symlink=False
     try:
         fml.setup_fml(fml_dir=fml_dir, mcp_dir=mcp_dir)
     except Exception:
@@ -146,8 +142,6 @@ def install():
     print "> Minecraft Forge Setup Finished"
     shutil.rmtree(forge_dir)
     os.remove(forge_zip)
-    if symblink:
-        os.remove(os.path.join(os.environ["HOME"],".minecraft"))
     print "> Editing eclipse workspace"#########################################################################################
     #----------Initialize Directories
     mcploc = "$%7BWORKSPACE_LOC%7D/.api/Forge"+mcversion+"-"+build
@@ -180,7 +174,9 @@ def install():
             tree.getroot().remove(cpe)
     tree.getroot().insert(0,Element("classpathentry",
         {"kind":"lib","path":"lib/deobfMC.jar","sourcepath":"lib/deobfMC-src.jar"}))
-    tree.write(cp)
+    outputfile = open(cp,"wb")
+    outputfile.write(TreeToStr(tree.getroot()).replace("Minecraft/","@PROJECT_NAME@/"))
+    outputfile.close()
     #----------Client.launch Fixes
     tree = ElementTree()
     tree.parse(os.path.join(dbg,"Client.launch"))
@@ -323,7 +319,9 @@ def i_eclipse(dir,version=""):
         for api in config.get("pj","api").split(":"):
             tree.getroot().append(Element("classpathentry",
                 {"kind":"lib","path":"lib/"+api+".jar","sourcepath":"lib/"+api+"-src.jar"}))
-    tree.write(os.path.join(todir,".classpath"))
+    outputfile = open(os.path.join(todir,".classpath"),"wb")
+    outputfile.write(TreeToStr(tree.getroot()).replace("@PROJECT_NAME@",dir))
+    outputfile.close()
     #-----.project File
     inputfile = open(os.path.join(fromdir,"Minecraft",".project"),"rb")
     filedata = inputfile.read()
@@ -407,13 +405,6 @@ def build(pname):
     pj_out_dir = os.path.dirname(pj_out_f)
     if not os.path.isdir(pj_out_dir):
         os.makedirs(pj_out_dir)
-    # HOME Minecraft DIRECTORY
-    home_mc_dir = os.path.join(os.environ["HOME"],".minecraft")
-    if not os.path.isdir(home_mc_dir):
-        os.symlink(os.path.join(mcp_dir,mcp_cfg.get("DEFAULT","DirJars")),home_mc_dir)
-        symblink=True
-    else:
-        symblink=False
     srces = []
     reses = []
     apies = []
@@ -599,8 +590,6 @@ def build(pname):
                 if not p==os.path.abspath(os.path.join(mcp_src_dir,"dummy.java")):
                     lzip.write(p,p.replace(mcp_src_dir,""))
         lzip.close()
-    if symblink:
-        os.remove(home_mc_dir)
     cmd.logger.info("- All Done in %.2f seconds", time.time() - starttime)
     logger = logging.getLogger()
     while len(logger.handlers) > 0:
