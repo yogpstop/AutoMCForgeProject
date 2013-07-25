@@ -414,6 +414,7 @@ def build(pname):
     repes["@FORGEVERSION@"]=forge_v.split("-")[1]
     repes["@FORGEBUILD@"]=forge_v.split(".")[-1]
     os.chdir(mcp_dir)
+    sys.path.append(mcp_dir)
     from runtime.mcp import reobfuscate_side
     from runtime.commands import Commands,CLIENT,SERVER
     cmd = Commands()
