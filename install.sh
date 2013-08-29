@@ -1,3 +1,3 @@
 #!/bin/bash
-echo -en "#!/bin/bash\npython "`basename $(pwd)`"/main.py\n" >../AMCFP.sh
+echo -en "#!/bin/bash\npython `dirname $0`/main.py \$@\n" >../AMCFP.sh
 mkdir ../.api

@@ -1,4 +1,4 @@
-import os, sys, shutil, zipfile, time, copy, re, urllib, logging, subprocess
+import os, sys, shutil, zipfile, time, copy, re, urllib, logging, subprocess, argparse
 from ConfigParser import SafeConfigParser
 from xml.etree.ElementTree import ElementTree, Element
 from xml.etree.ElementTree import tostring as TreeToStr
@@ -660,4 +660,10 @@ def main(cur=None):
 				if done:
 					break
 if __name__ == "__main__":
-	main()
+	parser = argparse.ArgumentParser(description="Auto MinecraftForge Project Assembler and Builder")
+	parser.add_argument("-b", "--build",metavar="ProjectName", help="Build selected project")
+	args = parser.parse_args()
+	if args.build is None:
+		main()
+	else:
+		build(args.build)
