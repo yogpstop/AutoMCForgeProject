@@ -1,13 +1,8 @@
-import os, sys, shutil, zipfile, time, copy, re, urllib, logging
+import os, sys, shutil, zipfile, time, copy, re, urllib, logging, subprocess
 from ConfigParser import SafeConfigParser
 from xml.etree.ElementTree import ElementTree, Element
 from xml.etree.ElementTree import tostring as TreeToStr
 _path_ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-def mkdir_zip(base,zip,path):
-	cache=os.path.dirname(path)
-	if (not cache+os.sep in zip.namelist()) and (not cache==""):
-		mkdir_zip(base,zip,cache)
-		zip.write(os.path.join(base,cache),cache+os.sep)
 def isbinary(file):##text file contains only HT,LF,CR and basic characters
 	f = open(file,"rb")
 	for b in f.read():
@@ -219,46 +214,44 @@ def install():
 	lib_dir = os.path.join(mcp_dir,config.get("DEFAULT","DirLib"))
 	cl_bin_dir = os.path.join(mcp_dir,os.path.normpath(config.get("RECOMPILE","binclient")))
 	cl_src_dir = os.path.join(mcp_dir,os.path.normpath(config.get("OUTPUT","srcclient")))
-	zip = zipfile.ZipFile(os.path.join(lib_dir,"deobfMC.jar"),"w",zipfile.ZIP_DEFLATED)
+	cdir = os.path.join(os.path.join(lib_dir,"deobfMC"))
+	shutil.rmtree(cdir,True)
+	os.makedirs(cdir)
 	for dpath,dnames,fnames in os.walk(cl_bin_dir):
 		for fname in fnames:
 			p = os.path.join(dpath,fname)
-			zp = os.path.relpath(p,cl_bin_dir)
-			mkdir_zip(cl_bin_dir,zip,zp)
-			zip.write(p,zp)
+			zp = os.path.join(cdir,os.path.relpath(p,cl_bin_dir))
+			dzp = os.path.dirname(zp)
+			if not os.path.isdir(dzp):
+				os.makedirs(dzp)
+			shutil.copy2(p,zp)
 	for dpath,dnames,fnames in os.walk(cl_src_dir):
 		for fname in fnames:
 			if fname.endswith(".java"):
 				continue
 			p = os.path.join(dpath,fname)
-			zp = os.path.relpath(p,cl_src_dir)
-			mkdir_zip(cl_src_dir,zip,zp)
-			zip.write(p,zp)
+			zp = os.path.join(cdir,os.path.relpath(p,cl_src_dir))
+			dzp = os.path.dirname(zp)
+			if not os.path.isdir(dzp):
+				os.makedirs(dzp)
+			shutil.copy2(p,zp)
 	if common_src_dir_exist:
 		for dpath,dnames,fnames in os.walk(common_src_dir):
 			for fname in fnames:
 				if fname.endswith(".java"):
 					continue
 				p = os.path.join(dpath,fname)
-				zp = os.path.relpath(p,common_src_dir)
-				mkdir_zip(common_src_dir,zip,zp)
-				zip.write(p,zp)
-	zip.close()
-	zip = zipfile.ZipFile(os.path.join(lib_dir,"deobfMC-src.jar"),"w",zipfile.ZIP_DEFLATED)
-	for dpath,dnames,fnames in os.walk(cl_src_dir):
-		for fname in fnames:
-			p = os.path.join(dpath,fname)
-			zp = os.path.relpath(p,cl_src_dir)
-			mkdir_zip(cl_src_dir,zip,zp)
-			zip.write(p,zp)
+				zp = os.path.join(cdir,os.path.relpath(p,common_src_dir))
+				dzp = os.path.dirname(zp)
+				if not os.path.isdir(dzp):
+					os.makedirs(dzp)
+				shutil.copy2(p,zp)
+	subprocess.check_call(["jar","cf",os.path.join(lib_dir,"deobfMC.jar"),"-C",cdir,"."])
+	shutil.rmtree(cdir)
+	call = ["jar","cf",os.path.join(lib_dir,"deobfMC-src.jar"),"-C",cl_src_dir,"."]
 	if common_src_dir_exist:
-		for dpath,dnames,fnames in os.walk(common_src_dir):
-			for fname in fnames:
-				p = os.path.join(dpath,fname)
-				zp = os.path.relpath(p,common_src_dir)
-				mkdir_zip(common_src_dir,zip,zp)
-				zip.write(p,zp)
-	zip.close()
+		call.extend(["-C",common_src_dir,"."])
+	subprocess.check_call(call)
 	print "> Editing config file"###############################################################################################
 	config.set("OUTPUT","TestClient","dummy")
 	confobj = open(conffile,"wb")
@@ -545,32 +538,36 @@ def build(pname):
 	else:
 		reobfuscate_side(cmd,CLIENT)
 	cmd.logger.info("> Creating output ZipFile")################################################################################
-	pj_out = zipfile.ZipFile(pj_out_f,"w",zipfile.ZIP_DEFLATED)
+	cdir = pj_out_f+".c"
+	shutil.rmtree(cdir,True)
+	os.makedirs(cdir)
 	for base,dnames,fnames in os.walk(mcp_reobf_dir):
 		for fname in fnames:
 			p = os.path.join(base,fname)
-			zp = os.path.relpath(p,mcp_reobf_dir)
-			mkdir_zip(mcp_reobf_dir,pj_out,zp)
-			pj_out.write(p,zp)
+			zp = os.path.join(cdir,os.path.relpath(p,mcp_reobf_dir))
+			dzp = os.path.dirname(zp)
+			if not os.path.isdir(dzp):
+				os.makedirs(dzp)
+			shutil.copy2(p,zp)
 	for base,list in reses:
 		for res in list:
 			p = os.path.join(base,res)
-			mkdir_zip(base,pj_out,res)
-			if isbinary(p):
-				pj_out.write(p,res)
-			else:
-				inputfile = open(p,"rb")
-				filedata = inputfile.read()
-				inputfile.close()
+			zp = os.path.join(cdir,res)
+			dzp = os.path.dirname(zp)
+			if not os.path.isdir(dzp):
+				os.makedirs(dzp)
+			shutil.copy2(p,zp)
+			if not isbinary(p):
+				fobj = open(zp,"rb")
+				filedata = fobj.read()
+				fobj.close()
 				for repfrom,repto in repes.items():
 					filedata = filedata.replace(repfrom,repto)
-				st = os.stat(p)
-				zinfo = zipfile.ZipInfo(res, time.localtime(st.st_mtime)[0:6])
-				zinfo.external_attr = (st[0] & 0xFFFF) << 16L
-				zinfo.compress_type = pj_out.compression
-				zinfo.flag_bits = 0x00
-				pj_out.writestr(zinfo,filedata)
-	pj_out.close()
+				fobj = open(zp,"wb")
+				fobj.write(filedata)
+				fobj.close()
+	subprocess.check_call(["jar","cf",pj_out_f,"-C",cdir,"."])
+	shutil.rmtree(cdir)
 	if pj_cfg.has_option("pj","capif"):
 		api_lib_f = pj_cfg.get("pj","capif")
 		cmd.logger.info("> Cleaning bin directory")#############################################################################
@@ -578,42 +575,49 @@ def build(pname):
 		cmd.logger.info("> Recompiling")########################################################################################
 		cmd.recompile(CLIENT)
 		cmd.logger.info("> Creating libraries")#################################################################################
-		lzip = zipfile.ZipFile(os.path.join(mcp_lib_dir,api_lib_f+".jar"),"w",zipfile.ZIP_DEFLATED)
+		cdir = os.path.join(mcp_lib_dir,api_lib_f)
+		shutil.rmtree(cdir,True)
+		os.makedirs(cdir)
 		for dpath,dnames,fnames in os.walk(mcp_bin_dir):
 			for fname in fnames:
 				p = os.path.join(dpath,fname)
 				if not p==os.path.abspath(os.path.join(mcp_bin_dir,"dummy.class")):
-					zp = os.path.relpath(p,mcp_bin_dir)
-					mkdir_zip(mcp_bin_dir,lzip,zp)
-					lzip.write(p,zp)
+					zp = os.path.join(cdir,os.path.relpath(p,mcp_bin_dir))
+					dzp = os.path.dirname(zp)
+					if not os.path.isdir(dzp):
+						os.makedirs(dzp)
+					shutil.copy2(p,zp)
 		for base,list in reses:
 			for res in list:
 				p = os.path.join(base,res)
-				mkdir_zip(base,lzip,res)
-				if isbinary(p):
-					lzip.write(p,res)
-				else:
-					inputfile = open(p,"rb")
-					filedata = inputfile.read()
-					inputfile.close()
+				zp = os.path.join(cdir,res)
+				dzp = os.path.dirname(zp)
+				if not os.path.isdir(dzp):
+					os.makedirs(dzp)
+				shutil.copy2(p,zp)
+				if not isbinary(p):
+					fobj = open(zp,"rb")
+					filedata = fobj.read()
+					fobj.close()
 					for repfrom,repto in repes.items():
 						filedata = filedata.replace(repfrom,repto)
-					st = os.stat(p)
-					zinfo = zipfile.ZipInfo(res, time.localtime(st.st_mtime)[0:6])
-					zinfo.external_attr = (st[0] & 0xFFFF) << 16L
-					zinfo.compress_type = lzip.compression
-					zinfo.flag_bits = 0x00
-					lzip.writestr(zinfo,filedata)
-		lzip.close()
-		lzip = zipfile.ZipFile(os.path.join(mcp_lib_dir,api_lib_f+"-src.jar"),"w",zipfile.ZIP_DEFLATED)
+					fobj = open(zp,"wb")
+					fobj.write(filedata)
+					fobj.close()
+		subprocess.check_call(["jar","cf",cdir+".jar","-C",cdir,"."])
+		shutil.rmtree(cdir)
+		os.makedirs(cdir)
 		for dpath,dnames,fnames in os.walk(mcp_src_dir):
 			for fname in fnames:
 				p = os.path.join(dpath,fname)
 				if not p==os.path.abspath(os.path.join(mcp_src_dir,"dummy.java")):
-					zp = os.path.relpath(p,mcp_src_dir)
-					mkdir_zip(mcp_src_dir,lzip,zp)
-					lzip.write(p,zp)
-		lzip.close()
+					zp = os.path.join(cdir,os.path.relpath(p,mcp_src_dir))
+					dzp = os.path.dirname(zp)
+					if not os.path.isdir(dzp):
+						os.makedirs(dzp)
+					shutil.copy2(p,zp)
+		subprocess.check_call(["jar","cf",cdir+"-src.jar","-C",cdir,"."])
+		shutil.rmtree(cdir)
 	cmd.logger.info("- All Done in %.2f seconds", time.time() - starttime)
 	logger = logging.getLogger()
 	while len(logger.handlers) > 0:
