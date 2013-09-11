@@ -93,6 +93,7 @@ def install():
 	zf = zipfile.ZipFile(forge_zip,"r")
 	zf.extractall(_path_)
 	zf.close()
+	os.remove(forge_zip)
 	############################################################################################################################
 	forge_dir = os.path.join(_path_,"forge")
 	fml_dir = os.path.join(forge_dir,"fml")
@@ -103,12 +104,12 @@ def install():
 	sys.path.append(forge_dir)
 	import forge,fml
 	print "> Forge ModLoader Setup Start"
+	os.chdir(forge_dir)
 	try:
 		fml.download_mcp(fml_dir=fml_dir,mcp_dir=mcp_dir)
 	except Exception:
 		pass
 	fml.setup_mcp(fml_dir=fml_dir, mcp_dir=mcp_dir)
-	os.chdir(mcp_dir)
 	config = SafeConfigParser()
 	conffile = os.path.join(mcp_dir,"conf","mcp.cfg")
 	config.read(conffile)
@@ -123,6 +124,7 @@ def install():
 	print "> Minecraft Forge Setup Start"
 	print "> Applying forge patches"
 	forge.apply_forge_patches(fml_dir=fml_dir, mcp_dir=mcp_dir, forge_dir=forge_dir, src_dir=src_dir)
+	sys.path.append(mcp_dir)
 	os.chdir(mcp_dir)
 	from runtime.mcp import updatenames_side,updatemd5_side,recompile_side
 	from runtime.commands import Commands,CLIENT,SERVER
@@ -138,7 +140,6 @@ def install():
 	fml.reset_logger()
 	print "> Minecraft Forge Setup Finished"
 	shutil.rmtree(forge_dir)
-	os.remove(forge_zip)
 	print "> Editing eclipse workspace"#########################################################################################
 	#----------Initialize Directories
 	mcploc = "$%7BWORKSPACE_LOC%7D/.api/Forge"+mcversion+"-"+build
@@ -307,19 +308,32 @@ def i_eclipse(dir,version=""):
 			else:
 				bsrc = src[:point]
 				nsrc = src[point+1:]+"/"
-			tree.getroot().append(Element("classpathentry",{"kind":"src","path":bsrc,"including":nsrc}))
-	for src in config.get("pj","res").split(":"):
-		if src.endswith("/"):
-			tree.getroot().append(Element("classpathentry",{"kind":"src","path":src[:-1]}))
-		else:
-			point = src.rfind("/")
-			if point == -1:
-				bsrc = ""
-				nsrc = src
+			done = False
+			for entry in tree.getroot().findall("classpathentry"):
+				if entry.get("kind") == "src" and entry.get("path") == bsrc:
+					entry.set("including",entry.get("including")+"|"+nsrc)
+					done = True
+			if not done:
+				tree.getroot().append(Element("classpathentry",{"kind":"src","path":bsrc,"including":nsrc}))
+	if config.has_option("pj","res"):
+		for src in config.get("pj","res").split(":"):
+			if src.endswith("/"):
+				tree.getroot().append(Element("classpathentry",{"kind":"src","path":src[:-1]}))
 			else:
-				bsrc = src[:point]
-				nsrc = src[point+1:]+"/"
-			tree.getroot().append(Element("classpathentry",{"kind":"src","path":bsrc,"including":nsrc}))
+				point = src.rfind("/")
+				if point == -1:
+					bsrc = ""
+					nsrc = src
+				else:
+					bsrc = src[:point]
+					nsrc = src[point+1:]+"/"
+				done = False
+				for entry in tree.getroot().findall("classpathentry"):
+					if entry.get("kind") == "src" and entry.get("path") == bsrc:
+						entry.set("including",entry.get("including")+"|"+nsrc)
+						done = True
+				if not done:
+					tree.getroot().append(Element("classpathentry",{"kind":"src","path":bsrc,"including":nsrc}))
 	if config.has_option("pj","api"):
 		for api in config.get("pj","api").split(":"):
 			tree.getroot().append(Element("classpathentry",
@@ -416,8 +430,11 @@ def build(pname):
 	repes = {}
 	repes["@VERSION@"]=mod_v
 	repes["@MCVERSION@"]=forge_v.split("-")[0]
+	repes["@MC_VERSION@"]=forge_v.split("-")[0]
 	repes["@FORGEVERSION@"]=forge_v.split("-")[1]
+	repes["@FORGE_VERSION@"]=forge_v.split("-")[1]
 	repes["@FORGEBUILD@"]=forge_v.split(".")[-1]
+	repes["@FORGE_BUILD@"]=forge_v.split(".")[-1]
 	os.chdir(mcp_dir)
 	sys.path.append(mcp_dir)
 	from runtime.mcp import reobfuscate_side
@@ -445,9 +462,12 @@ def build(pname):
 			ndir = os.path.abspath(os.path.join(pj_dir,os.path.dirname(dir)))
 			dir = os.path.abspath(os.path.join(pj_dir,dir))
 			cache = []
-			for fpath, dnames, fnames in os.walk(dir):
-				for fname in fnames:
-					cache.append(os.path.relpath(os.path.join(fpath,fname),ndir))
+			if os.path.isfile(dir):
+				cache.append(os.path.relpath(dir,ndir))
+			elif os.path.isdir(dir):
+				for fpath, dnames, fnames in os.walk(dir):
+					for fname in fnames:
+						cache.append(os.path.relpath(os.path.join(fpath,fname),ndir))
 			tap = (ndir,cache)
 			reses.append(tap)
 	if pj_cfg.has_option("pj","api"):
@@ -494,11 +514,11 @@ def build(pname):
 			for file in zf.namelist():
 				cache = os.path.join(mcp_bin_dir,file)
 				if not os.path.exists(cache):
-					if file.endswith("/"):
-						os.mkdir(cache)
-					else:
-						if file.endswith(".class"):
-							zf.extract(file,mcp_bin_dir)
+					if file.endswith(".class"):
+						todir = os.path.dirname(os.path.join(mcp_bin_dir,file))
+						if not os.path.exists(todir):
+							os.makedirs(todir)
+						zf.extract(file,mcp_bin_dir)
 			zf.close()
 	cmd.logger.info("> Generating md5s")########################################################################################
 	cmd.gathermd5s(CLIENT)
@@ -566,8 +586,24 @@ def build(pname):
 				fobj = open(zp,"wb")
 				fobj.write(filedata)
 				fobj.close()
-	subprocess.check_call(["jar","cf",pj_out_f,"-C",cdir,"."])
+	call = ["jar"]
+	if pj_cfg.has_option("pj","man"):
+		inputfile = open(os.path.join(pj_dir, pj_cfg.get("pj","man").replace("/",os.sep)),"rb")
+		tofile = pj_out_f+".man"
+		filedata = inputfile.read()
+		inputfile.close()
+		for repfrom,repto in repes.items():
+			filedata = filedata.replace(repfrom,repto)
+		outputfile = open(tofile,"wb")
+		outputfile.write(filedata)
+		outputfile.close()
+		call.extend(["cmf",tofile])
+	else:
+		call.extend(["cf"])
+	call.extend([pj_out_f,"-C",cdir,"."])
+	subprocess.check_call(call)
 	shutil.rmtree(cdir)
+	os.remove(tofile)
 	if pj_cfg.has_option("pj","capif"):
 		api_lib_f = pj_cfg.get("pj","capif")
 		cmd.logger.info("> Cleaning bin directory")#############################################################################
