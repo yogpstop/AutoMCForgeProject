@@ -420,7 +420,7 @@ def build(pname):
 	if pj_cfg.has_option("pj","out"):
 		pj_out_f = os.path.join(pj_dir,pj_cfg.get("pj","out").replace("/",os.sep))
 	else:
-		pj_out_f = os.path.join(pj_dir,"dist",forge_v.replace("-",os.sep),pname+"-"+mod_v+".zip")
+		pj_out_f = os.path.join(pj_dir,"dist",forge_v.replace("-",os.sep),pname+"-"+forge_v.split("-")[0]+"-"+mod_v+".zip")
 	pj_out_dir = os.path.dirname(pj_out_f)
 	if not os.path.isdir(pj_out_dir):
 		os.makedirs(pj_out_dir)
@@ -477,6 +477,8 @@ def build(pname):
 		for rep in pj_cfg.get("pj","rep").split("|"):
 			bef,aft=rep.split("=")
 			repes[bef] = aft
+	for repfrom,repto in repes.items():
+		pj_out_f = pj_out_f.replace(repfrom,repto)
 	srg = False
 	if pj_cfg.has_option("pj","srg"):
 		srg = pj_cfg.getboolean("pj","srg")
