@@ -119,26 +119,28 @@ def install():
 	sys.path.append(forge_dir)
 	import forge,fml
 	print "> Forge ModLoader Setup Start"
-	os.chdir(forge_dir)
 	try:
-		fml.download_mcp(fml_dir=fml_dir,mcp_dir=mcp_dir)
+		fml.download_mcp(fml_dir=fml_dir, mcp_dir=mcp_dir)
 	except Exception:
 		pass
-	fml.setup_mcp(fml_dir=fml_dir, mcp_dir=mcp_dir)
-	config = SafeConfigParser()
-	conffile = os.path.join(mcp_dir,"conf","mcp.cfg")
-	config.read(conffile)
-	src_dir = os.path.join(mcp_dir,config.get("DEFAULT","DirSrc"))
+	try:
+		fml.setup_mcp(fml_dir=fml_dir, mcp_dir=mcp_dir, gen_conf=False)
+	except Exception:
+		fml.setup_mcp(fml_dir=fml_dir, mcp_dir=mcp_dir, dont_gen_conf=True)
 	try:
 		fml.setup_fml(fml_dir=fml_dir, mcp_dir=mcp_dir)
 	except Exception:
-		fml.decompile_minecraft(fml_dir=fml_dir,mcp_dir=mcp_dir)
+		fml.decompile_minecraft(fml_dir=fml_dir, mcp_dir=mcp_dir)
+	src_dir = os.path.join(mcp_dir,"src")
 	fml.apply_fml_patches(fml_dir=fml_dir, mcp_dir=mcp_dir, src_dir=src_dir)
 	fml.finish_setup_fml(fml_dir=fml_dir, mcp_dir=mcp_dir)
 	print "> Forge ModLoader Setup End"
 	print "> Minecraft Forge Setup Start"
 	print "> Applying forge patches"
 	forge.apply_forge_patches(fml_dir=fml_dir, mcp_dir=mcp_dir, forge_dir=forge_dir, src_dir=src_dir)
+	config = SafeConfigParser()
+	conffile = os.path.join(mcp_dir,"conf","mcp.cfg")
+	config.read(conffile)
 	sys.path.append(mcp_dir)
 	os.chdir(mcp_dir)
 	from runtime.mcp import updatenames_side,updatemd5_side,recompile_side
