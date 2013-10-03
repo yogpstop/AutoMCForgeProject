@@ -140,7 +140,9 @@ def install():
 	forge.apply_forge_patches(fml_dir=fml_dir, mcp_dir=mcp_dir, forge_dir=forge_dir, src_dir=src_dir)
 	config = SafeConfigParser()
 	conffile = os.path.join(mcp_dir,"conf","mcp.cfg")
-	config.read(conffile)
+	conffilep = open(conffile, "rb")
+	config.readfp(conffilep)
+	conffilep.close()
 	sys.path.append(mcp_dir)
 	os.chdir(mcp_dir)
 	from runtime.mcp import updatenames_side,updatemd5_side,recompile_side
@@ -300,9 +302,11 @@ def i_eclipse(dir,version=""):
 	print "> Copying eclipse project files to "+dir
 	#-----build.cfg Fixes
 	config = SafeConfigParser()
-	config.read(cf)
+	cff = open(cf,"rb")
+	config.readfp(cff)
+	cff.close()
 	config.set("pj","mcv",version)
-	cff = open(cf,"w")
+	cff = open(cf,"wb")
 	config.write(cff)
 	cff.close()
 	#-----InitializeDirectories
@@ -410,7 +414,9 @@ def build(pname):
 		print dir+" doesn't have build.cfg. Create it!"
 		return
 	pj_cfg = SafeConfigParser()
-	pj_cfg.read(pj_cfg_f)
+	pj_cfg_fp = open(pj_cfg_f, "rb")
+	pj_cfg.readfp(pj_cfg_fp)
+	pj_cfg_fp.close()
 	if pj_cfg.has_option("pj","mcv"):
 		forge_v = pj_cfg.get("pj","mcv")
 	else:
@@ -421,7 +427,9 @@ def build(pname):
 	mcp_dir = os.path.join(_path_,".api","Forge"+forge_v)
 	mcp_cfg_f = os.path.join(mcp_dir,"conf","mcp.cfg")
 	mcp_cfg = SafeConfigParser()
-	mcp_cfg.read(mcp_cfg_f)
+	mcp_cfg_fp = open(mcp_cfg_f, "rb")
+	mcp_cfg.readfp(mcp_cfg_fp)
+	mcp_cfg_fp.close()
 	mcp_src_dir = os.path.join(mcp_dir,mcp_cfg.get("DEFAULT","DirSrc"))
 	_temp_ = os.path.join(mcp_dir,os.path.normpath(mcp_cfg.get("OUTPUT","SrcClient")))
 	if os.path.isdir(os.path.join(mcp_src_dir,"common")):
@@ -622,7 +630,8 @@ def build(pname):
 	call.extend([pj_out_f,"-C",cdir,"."])
 	subprocess.check_call(call)
 	shutil.rmtree(cdir)
-	os.remove(tofile)
+	if pj_cfg.has_option("pj","man"):
+		os.remove(tofile)
 	if pj_cfg.has_option("pj","capif"):
 		api_lib_f = pj_cfg.get("pj","capif")
 		cmd.logger.info("> Cleaning bin directory")#############################################################################
