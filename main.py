@@ -235,8 +235,9 @@ def install():
 	cl_bin_dir = os.path.join(mcp_dir,os.path.normpath(config.get("RECOMPILE","binclient")))
 	cl_src_dir = os.path.join(mcp_dir,os.path.normpath(config.get("OUTPUT","srcclient")))
 	cdir = os.path.join(os.path.join(lib_dir,"deobfMC"))
+	cdirs = os.path.join(os.path.join(lib_dir,"deobfMC-src"))
 	shutil.rmtree(cdir,True)
-	os.makedirs(cdir)
+	shutil.rmtree(cdirs,True)
 	for dpath,dnames,fnames in os.walk(cl_bin_dir):
 		for fname in fnames:
 			p = os.path.join(dpath,fname)
@@ -247,9 +248,14 @@ def install():
 			shutil.copy2(p,zp)
 	for dpath,dnames,fnames in os.walk(cl_src_dir):
 		for fname in fnames:
+			p = os.path.join(dpath,fname)
+			zp = os.path.join(cdirs,os.path.relpath(p,cl_src_dir))
+			dzp = os.path.dirname(zp)
+			if not os.path.isdir(dzp):
+				os.makedirs(dzp)
+			shutil.copy2(p,zp)
 			if fname.endswith(".java"):
 				continue
-			p = os.path.join(dpath,fname)
 			zp = os.path.join(cdir,os.path.relpath(p,cl_src_dir))
 			dzp = os.path.dirname(zp)
 			if not os.path.isdir(dzp):
@@ -258,20 +264,23 @@ def install():
 	if common_src_dir_exist:
 		for dpath,dnames,fnames in os.walk(common_src_dir):
 			for fname in fnames:
+				p = os.path.join(dpath,fname)
+				zp = os.path.join(cdirs,os.path.relpath(p,common_src_dir))
+				dzp = os.path.dirname(zp)
+				if not os.path.isdir(dzp):
+					os.makedirs(dzp)
+				shutil.copy2(p,zp)
 				if fname.endswith(".java"):
 					continue
-				p = os.path.join(dpath,fname)
 				zp = os.path.join(cdir,os.path.relpath(p,common_src_dir))
 				dzp = os.path.dirname(zp)
 				if not os.path.isdir(dzp):
 					os.makedirs(dzp)
 				shutil.copy2(p,zp)
 	subprocess.check_call(["jar","cf",os.path.join(lib_dir,"deobfMC.jar"),"-C",cdir,"."])
+	subprocess.check_call(["jar","cf",os.path.join(lib_dir,"deobfMC-src.jar"),"-C",cdirs,"."])
 	shutil.rmtree(cdir)
-	call = ["jar","cf",os.path.join(lib_dir,"deobfMC-src.jar"),"-C",cl_src_dir,"."]
-	if common_src_dir_exist:
-		call.extend(["-C",common_src_dir,"."])
-	subprocess.check_call(call)
+	shutil.rmtree(cdirs)
 	print "> Editing config file"###############################################################################################
 	config.set("OUTPUT","TestClient","dummy")
 	confobj = open(conffile,"wb")
