@@ -13,7 +13,7 @@
 # GNU Lesser General Public License along with this program.
 # If not, see <http://www.gnu.org/licenses/>.
 
-import os, sys, shutil, zipfile, time, copy, re, urllib, logging, subprocess, argparse
+import os, sys, shutil, zipfile, time, copy, re, urllib, logging, subprocess, getopt
 from ConfigParser import SafeConfigParser
 from xml.etree.ElementTree import ElementTree, Element
 from xml.etree.ElementTree import tostring as TreeToStr
@@ -733,10 +733,12 @@ def main(cur=None):
 				if done:
 					break
 if __name__ == "__main__":
-	parser = argparse.ArgumentParser(description="Auto MinecraftForge Project Assembler and Builder")
-	parser.add_argument("-b", "--build",metavar="ProjectName", help="Build selected project")
-	args = parser.parse_args()
-	if args.build is None:
-		main()
+	opts, args = getopt.getopt(sys.argv[1:], "b:", ["build="])
+	build_n = None
+	for o, a in opts:
+		if o in ("-b", "--build"):
+			build_n = a
+	if not build_n is None:
+		build(build_n)
 	else:
-		build(args.build)
+		main()
