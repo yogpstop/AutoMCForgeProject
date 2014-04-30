@@ -72,9 +72,9 @@ def select_one():
 def install():
 	forge_zip = os.path.join(_path_,"forge.zip")
 	print "> Start forge install"###############################################################################################
-	fl = urllib.urlopen("http://files.minecraftforge.net/").read().decode().splitlines()
-	regax = re.compile("http://files.minecraftforge.net/minecraftforge/minecraftforge-src-([^-]*)-([^-]*).zip")
 	builds = {}
+	fl = urllib.urlopen("http://files.minecraftforge.net/minecraftforge/index_legacy.html").read().decode().splitlines()
+	regax = re.compile("http://files.minecraftforge.net/minecraftforge/minecraftforge-src-([^-]+)-([^-]+).zip")
 	for build in fl:
 		m = regax.search(build)
 		if m:
@@ -83,6 +83,8 @@ def install():
 			if not builds.has_key(m.group(1)):
 				builds[m.group(1)] = {}
 			builds[m.group(1)][m.group(2)]=m.group(0)
+	builds["1.6.4"]["9.11.1.965"]="http://files.minecraftforge.net/maven/net/minecraftforge/forge/1.6.4-9.11.1.965/forge-1.6.4-9.11.1.965-src.zip"
+	builds["1.6.4"]["9.11.1.953"]="http://files.minecraftforge.net/maven/net/minecraftforge/forge/1.6.4-9.11.1.953/forge-1.6.4-9.11.1.953-src.zip"
 	############################################################################################################################
 	for m in sorted(builds.keys(), cmp=cmp_version):
 		print m
@@ -90,14 +92,18 @@ def install():
 		mcversion = raw_input("select Minecraft version: ")
 		if builds.has_key(mcversion):
 			break
+	md5_patch = (mcversion == "1.6.4")
 	############################################################################################################################
 	for build in sorted(builds[mcversion].keys(), cmp=cmp_version):
 		print build
 	done = False
+	scala_patch = False
 	while True:
 		bnum = raw_input("select Forge build: ")
 		for build in builds[mcversion].keys():
 			if build==bnum or build.split(".")[-1]==bnum:
+				if cmp_version("7.7.1.672", build) <= 0 and cmp_version("7.8.1.738", build) >= 0:
+					scala_patch = True
 				print "> Downloading MinecraftForge"
 				urllib.urlretrieve(builds[mcversion][build],forge_zip)
 				done = True
@@ -113,6 +119,16 @@ def install():
 	forge_dir = os.path.join(_path_,"forge")
 	fml_dir = os.path.join(forge_dir,"fml")
 	mcp_dir = os.path.join(_path_,".api","Forge"+mcversion+"-"+build)
+	if md5_patch:
+		cfg = SafeConfigParser()
+		mcvs=os.path.join(fml_dir,"mc_versions.cfg")
+		mcvs_fp = open(mcvs, "rb")
+		cfg.readfp(mcvs_fp)
+		mcvs_fp.close()
+		cfg.set("1.6.4", "server_md5", "abcf286a14f7aee82e8bf89270433509");
+		mcvs_fp = open(mcvs, "wb")
+		cfg.write(mcvs_fp)
+		mcvs_fp.close()
 	if os.path.isdir(mcp_dir):
 		shutil.rmtree(mcp_dir)
 	sys.path.append(fml_dir)
