@@ -137,15 +137,15 @@ def install():
 	print "> Forge ModLoader Setup Start"
 	try:
 		fml.download_mcp(fml_dir=fml_dir, mcp_dir=mcp_dir)
-	except Exception:
+	except AttributeError:
 		pass
 	try:
 		fml.setup_mcp(fml_dir=fml_dir, mcp_dir=mcp_dir, gen_conf=False)
-	except Exception:
+	except TypeError:
 		fml.setup_mcp(fml_dir=fml_dir, mcp_dir=mcp_dir, dont_gen_conf=True)
 	try:
 		fml.setup_fml(fml_dir=fml_dir, mcp_dir=mcp_dir)
-	except Exception:
+	except AttributeError:
 		fml.decompile_minecraft(fml_dir=fml_dir, mcp_dir=mcp_dir)
 	src_dir = os.path.join(mcp_dir,"src")
 	fml.apply_fml_patches(fml_dir=fml_dir, mcp_dir=mcp_dir, src_dir=src_dir)
@@ -600,7 +600,7 @@ def build(pname):
 		try:
 			cmd.createreobfsrg()
 			cmd.creatergcfg(reobf=True, srg_names=True)
-		except Exception:
+		except AttributeError:
 			srg=False; 
 	if not srg:
 		cmd.creatergcfg(reobf=True)
