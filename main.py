@@ -133,7 +133,7 @@ def install():
 		shutil.rmtree(mcp_dir)
 	if scala_patch:
 		scala_jar = os.path.join(mcp_dir, "lib")
-		os.mkdirs(scala_jar)
+		os.makedirs(scala_jar)
 		scala_jar = os.path.join(scala_jar, "scala_library.jar")
 		urllib.urlretrieve("http://files.minecraftforge.net/fmllibs/scala-library.jar.stash", scala_jar)
 	sys.path.append(fml_dir)
