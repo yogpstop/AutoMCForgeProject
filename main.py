@@ -131,6 +131,11 @@ def install():
 		mcvs_fp.close()
 	if os.path.isdir(mcp_dir):
 		shutil.rmtree(mcp_dir)
+	if scala_patch:
+		scala_jar = os.path.join(mcp_dir, "lib")
+		os.mkdirs(scala_jar)
+		scala_jar = os.path.join(scala_jar, "scala_library.jar")
+		urllib.urlretrieve("http://files.minecraftforge.net/fmllibs/scala-library.jar.stash", scala_jar)
 	sys.path.append(fml_dir)
 	sys.path.append(forge_dir)
 	import forge,fml
