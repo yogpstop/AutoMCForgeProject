@@ -131,11 +131,6 @@ def install():
 		mcvs_fp.close()
 	if os.path.isdir(mcp_dir):
 		shutil.rmtree(mcp_dir)
-	if scala_patch:
-		scala_jar = os.path.join(mcp_dir, "lib")
-		os.makedirs(scala_jar)
-		scala_jar = os.path.join(scala_jar, "scala_library.jar")
-		urllib.urlretrieve("http://files.minecraftforge.net/fmllibs/scala-library.jar.stash", scala_jar)
 	sys.path.append(fml_dir)
 	sys.path.append(forge_dir)
 	import forge,fml
@@ -148,6 +143,11 @@ def install():
 		fml.setup_mcp(fml_dir=fml_dir, mcp_dir=mcp_dir, gen_conf=False)
 	except TypeError:
 		fml.setup_mcp(fml_dir=fml_dir, mcp_dir=mcp_dir, dont_gen_conf=True)
+	if scala_patch:
+		scala_jar = os.path.join(mcp_dir, "lib")
+		os.makedirs(scala_jar)
+		scala_jar = os.path.join(scala_jar, "scala-library.jar")
+		urllib.urlretrieve("http://files.minecraftforge.net/fmllibs/scala-library.jar.stash", scala_jar)
 	try:
 		fml.setup_fml(fml_dir=fml_dir, mcp_dir=mcp_dir)
 	except AttributeError:
