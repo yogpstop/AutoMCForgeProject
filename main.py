@@ -475,7 +475,7 @@ def build(pname):
 	if pj_cfg.has_option("pj","out"):
 		pj_out_f = os.path.join(pj_dir,pj_cfg.get("pj","out").replace("/",os.sep))
 	else:
-		pj_out_f = os.path.join(pj_dir,"dist",forge_v.replace("-",os.sep),pname+"-"+forge_v.split("-")[0]+"-"+mod_v+".zip")
+		pj_out_f = os.path.join(pj_dir,"build","libs",pname+"-"+mod_v+".jar")
 	srces = []
 	reses = []
 	apies = []
