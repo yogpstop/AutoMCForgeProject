@@ -69,7 +69,7 @@ def select_one():
 		if num.isdigit():
 			if int(num)<len(dirs):
 				return dirs[int(num)]
-def install():
+def install(version=None):
 	forge_zip = os.path.join(_path_,"forge.zip")
 	print "> Start forge install"###############################################################################################
 	builds = {}
@@ -86,30 +86,37 @@ def install():
 	builds["1.6.4"]["9.11.1.965"]="http://files.minecraftforge.net/maven/net/minecraftforge/forge/1.6.4-9.11.1.965/forge-1.6.4-9.11.1.965-src.zip"
 	builds["1.6.4"]["9.11.1.953"]="http://files.minecraftforge.net/maven/net/minecraftforge/forge/1.6.4-9.11.1.953/forge-1.6.4-9.11.1.953-src.zip"
 	############################################################################################################################
-	for m in sorted(builds.keys(), cmp=cmp_version):
-		print m
-	while True:
-		mcversion = raw_input("select Minecraft version: ")
-		if builds.has_key(mcversion):
-			break
-	md5_patch = (mcversion == "1.6.4")
-	############################################################################################################################
-	for build in sorted(builds[mcversion].keys(), cmp=cmp_version):
-		print build
-	done = False
-	scala_patch = False
-	while True:
-		bnum = raw_input("select Forge build: ")
-		for build in builds[mcversion].keys():
-			if build==bnum or build.split(".")[-1]==bnum:
-				if cmp_version("7.7.1.672", build) <= 0 and cmp_version("7.8.1.738", build) >= 0:
-					scala_patch = True
-				print "> Downloading MinecraftForge"
-				urllib.urlretrieve(builds[mcversion][build],forge_zip)
-				done = True
+	if version is not None:
+		vlist = version.split("-", 1)
+		mcversion = vlist[0]
+		build = vlist[1]
+		print "> Downloading MinecraftForge"
+		urllib.urlretrieve(builds[mcversion][build],forge_zip)
+	else:
+		for m in sorted(builds.keys(), cmp=cmp_version):
+			print m
+		while True:
+			mcversion = raw_input("select Minecraft version: ")
+			if builds.has_key(mcversion):
 				break
-		if done:
-			break
+		############################################################################################################################
+		for build in sorted(builds[mcversion].keys(), cmp=cmp_version):
+			print build
+		done = False
+		while True:
+			bnum = raw_input("select Forge build: ")
+			for build in builds[mcversion].keys():
+				if build==bnum or build.split(".")[-1]==bnum:
+					print "> Downloading MinecraftForge"
+					urllib.urlretrieve(builds[mcversion][build],forge_zip)
+					done = True
+					break
+			if done:
+				break
+	md5_patch = (mcversion == "1.6.4")
+	scala_patch = False
+	if cmp_version("7.7.1.672", build) <= 0 and cmp_version("7.8.1.738", build) >= 0:
+		scala_patch = True
 	print "> Extracting MinecraftForge"#########################################################################################
 	zf = zipfile.ZipFile(forge_zip,"r")
 	zf.extractall(_path_)
@@ -148,6 +155,13 @@ def install():
 		os.makedirs(scala_jar)
 		scala_jar = os.path.join(scala_jar, "scala-library.jar")
 		urllib.urlretrieve("http://files.minecraftforge.net/fmllibs/scala-library.jar.stash", scala_jar)
+	cfg = os.path.join(mcp_dir, "conf", "astyle.cfg")
+	fobj = open(cfg, "rb")
+	astyledata=fobj.read()
+	fobj.close()
+	fobj = open(cfg, "wb")
+	fobj.write(re.sub("max-instatement-indent=[0-9]+", "max-instatement-indent=40", astyledata))
+	fobj.close()
 	try:
 		fml.setup_fml(fml_dir=fml_dir, mcp_dir=mcp_dir)
 	except AttributeError:
@@ -308,13 +322,13 @@ def install():
 	config.write(confobj)
 	confobj.close()
 	return mcversion+"-"+build
-def get_versions():
+def get_versions(allow_empty=False):
 	versions = []
 	for dir in os.listdir(os.path.join(_path_,".api")):
 		if not dir.startswith("Forge"):
 			continue
 		versions.append(dir.replace("Forge",""))
-	if len(versions)==0:
+	if len(versions)==0 and not allow_empty:
 		versions.append(install())
 	versions = sorted(versions, cmp=cmp_version)
 	return versions
@@ -451,9 +465,8 @@ def build(pname):
 		forge_v = pj_cfg.get("pj","mcv")
 	else:
 		forge_v = ""
-	if not forge_v in get_versions():
-		print "> Minecraft version is invalid. Change to newest"
-		forge_v = get_newest()
+	if not forge_v in get_versions(True):
+		forge_v = install(forge_v)
 	mcp_dir = os.path.join(_path_,".api","Forge"+forge_v)
 	mcp_cfg_f = os.path.join(mcp_dir,"conf","mcp.cfg")
 	mcp_cfg = SafeConfigParser()

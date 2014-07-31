@@ -20,5 +20,6 @@ DIRNAME=`dirname "${DIRNAME}"`
 DIRNAME=`basename "${DIRNAME}"`
 echo -en '#!/bin/bash\npython2 "`dirname $0`/'${DIRNAME}'/main.py" $@\n' >`dirname $0`/../AMCFP.sh
 echo -en 'if [ $? -ne 0 ] ; then read -rs -p "Press any key to exit..." -n1 ; fi' >>`dirname $0`/../AMCFP.sh
+chmod +x ../AMCFP.sh
 mkdir -p "`dirname $0`/../.api"
 
